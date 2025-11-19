@@ -1,7 +1,3 @@
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph,START,END
