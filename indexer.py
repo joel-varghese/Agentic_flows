@@ -3,11 +3,12 @@ from typing_extensions import TypedDict
 from langgraph.graph import StateGraph,START,END
 from langgraph.graph.message import add_messages 
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from langchain.llms import HuggingFacePipeline
+from langchain_community.llms import HuggingFacePipeline
+from dotenv import load_dotenv
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 import torch
 import os
-from dotenv import load_dotenv
-from langchain_core.messages import BaseMessage, HumanMessage
+
 
 
 load_dotenv()
@@ -17,15 +18,14 @@ api = os.getenv("HF_TOKEN")
 
 tokenizer = AutoTokenizer.from_pretrained(
     base_model,
-    trust_remote_code=True,
-    token=api,
+    use_auth_token=api,
     cache_dir=local_dir,
 )
 
 model = AutoModelForCausalLM.from_pretrained(
     base_model,
+    use_auth_token=api,
     torch_dtype=torch.float16,
-    token=api,
     cache_dir=local_dir,
     device_map="auto",
 )
@@ -55,17 +55,16 @@ graph_builder=StateGraph(State)
 # Node Functionality
 def chatbot(state:State):
     messages = state["messages"]
-    if isinstance(messages[-1], BaseMessage):
+    if isinstance(messages[-1], HumanMessage):
         prompt = messages[-1].content
     elif isinstance(messages, str):
         prompt = messages
     else:
         raise ValueError(f"Unsupported message format: {type(messages)}")
     response = llm(prompt)
-    return {"messages":[response]}
+    return {"messages":[AIMessage(content=response)]}
 
 
-graph_builder=StateGraph(State)
 
 # Adding Node
 graph_builder.add_node("my_chat",chatbot)
@@ -76,10 +75,10 @@ graph_builder.add_edge("my_chat",END)
 graph=graph_builder.compile()
 
 
-def answer_query(query, vectorstore):
-    response = graph.invoke({"messages": [HumanMessage(content="Hi there")]})
+def answer_query(query):
+    response = graph.invoke({"messages": [HumanMessage(content=query)]})
 
-    return response
+    return response["messages"][-1].content
 
 def multiply(a:int,b:int)->int:
     """

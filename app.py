@@ -2,9 +2,7 @@ import gradio as gr
 from indexer import answer_query
 
 def rag_system(input_text):
-    answer = answer_query(input_text)
-
-    return answer
+    return answer_query(input_text)
 
 iface = gr.Interface(
     fn=rag_system,
