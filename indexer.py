@@ -61,7 +61,7 @@ def chatbot(state:State):
         prompt = messages
     else:
         raise ValueError(f"Unsupported message format: {type(messages)}")
-    response = llm(prompt)
+    response = llm.invoke(prompt)
     return {"messages":[AIMessage(content=response)]}
 
 
