@@ -79,8 +79,8 @@ def answer_query(query):
     # response = graph.invoke({"messages": [HumanMessage(content=query)]})
     for event in graph.stream({"messages":[HumanMessage(content=query)]}):
         print(event)
-    print(response["messages"])
-    return response["messages"][-1].content
+
+    return "Done"
 
 def multiply(a:int,b:int)->int:
     """
