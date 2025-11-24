@@ -78,6 +78,7 @@ graph=graph_builder.compile()
 def answer_query(query):
     response = graph.invoke({"messages": [HumanMessage(content=query)]})
 
+    print(response["messages"])
     return response["messages"][-1].content
 
 def multiply(a:int,b:int)->int:
