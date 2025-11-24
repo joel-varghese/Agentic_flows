@@ -76,8 +76,9 @@ graph=graph_builder.compile()
 
 
 def answer_query(query):
-    response = graph.invoke({"messages": [HumanMessage(content=query)]})
-
+    # response = graph.invoke({"messages": [HumanMessage(content=query)]})
+    for event in graph.stream({"messages":[HumanMessage(content=query)]}):
+        print(event)
     print(response["messages"])
     return response["messages"][-1].content
 
@@ -93,3 +94,6 @@ def multiply(a:int,b:int)->int:
             int: output int
     """
     return a*b
+
+
+
