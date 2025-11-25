@@ -83,7 +83,7 @@ def multiply(a:int,b:int)->int:
     return a*b
 
 
-tool = TavilySearch(max_results=2)
+tool = TavilySearch(max_results=2, tavily_api_key=tavily)
 # tool.invoke("What is langgraph ?")
 
 
