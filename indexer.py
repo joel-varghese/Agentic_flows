@@ -7,7 +7,8 @@ from langgraph.graph.message import add_messages
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain_community.llms import HuggingFacePipeline
 from dotenv import load_dotenv
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_huggingface import ChatHuggingFace
 from langchain_tavily import TavilySearch
 import torch
 import os
@@ -43,7 +44,13 @@ hf_pipeline = pipeline(
     temperature=0.7
 )
 
-llm = HuggingFacePipeline(pipeline=hf_pipeline)
+llm = ChatHuggingFace.from_model_id(
+    model_id="meta-llama/Llama-3.2-1B-Instruct",
+    task="text-generation",
+    max_new_tokens=512,
+    temperature=0.7,
+    device_map="auto",
+)
 
 # add_messages is a reducer it appends messages into the list
 # #

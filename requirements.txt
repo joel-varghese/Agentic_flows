@@ -16,3 +16,4 @@ langchain-core
 langchain-community
 langchain-openai
 langchain_tavily
+langchain-huggingface
