@@ -44,6 +44,10 @@ hf_pipeline = pipeline(
     temperature=0.7
 )
 
+hf_llm = HuggingFacePipeline(pipeline=hf_pipeline)
+
+llm = ChatHuggingFace(llm=hf_llm)
+
 # llm = ChatHuggingFace.from_model_id(
 #     model_id="meta-llama/Llama-3.2-1B-Instruct",
 #     task="text-generation",
@@ -51,8 +55,6 @@ hf_pipeline = pipeline(
 #     temperature=0.7,
 #     device_map="auto",
 # )
-
-llm = ChatHuggingFace(pipeline=hf_pipeline)
 
 # add_messages is a reducer it appends messages into the list
 # #
