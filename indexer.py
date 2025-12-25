@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain_community.llms import HuggingFacePipeline
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_huggingface import ChatHuggingFace
+from langchain_huggingface import ChatHuggingFace,HuggingFacePipeline
 from langchain_tavily import TavilySearch
 import torch
 import os
