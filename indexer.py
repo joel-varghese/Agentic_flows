@@ -44,13 +44,15 @@ hf_pipeline = pipeline(
     temperature=0.7
 )
 
-llm = ChatHuggingFace.from_model_id(
-    model_id="meta-llama/Llama-3.2-1B-Instruct",
-    task="text-generation",
-    max_new_tokens=512,
-    temperature=0.7,
-    device_map="auto",
-)
+# llm = ChatHuggingFace.from_model_id(
+#     model_id="meta-llama/Llama-3.2-1B-Instruct",
+#     task="text-generation",
+#     max_new_tokens=512,
+#     temperature=0.7,
+#     device_map="auto",
+# )
+
+llm = ChatHuggingFace(pipeline=hf_pipeline)
 
 # add_messages is a reducer it appends messages into the list
 # #
@@ -107,7 +109,7 @@ def tool_calling_llm(state:State):
         prompt = messages
     else:
         raise ValueError(f"Unsupported message format: {type(messages)}")
-    response = llm.invoke(prompt)
+    response = llm_with_tool.invoke(prompt)
 
     return {"messages":[AIMessage(content=response)]}
 
