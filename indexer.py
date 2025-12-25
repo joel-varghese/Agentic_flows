@@ -77,7 +77,7 @@ def chatbot(state:State):
     else:
         raise ValueError(f"Unsupported message format: {type(messages)}")
     response = llm.invoke(prompt)
-    return {"messages":[AIMessage(content=response)]}
+    return {"messages":[response]}
 
 
 def multiply(a:int,b:int)->int:
@@ -113,7 +113,7 @@ def tool_calling_llm(state:State):
         raise ValueError(f"Unsupported message format: {type(messages)}")
     response = llm_with_tool.invoke(prompt)
 
-    return {"messages":[AIMessage(content=response)]}
+    return {"messages":[response]}
 
 # Adding Node
 graph_builder.add_node("tool_calling_llm", tool_calling_llm)
