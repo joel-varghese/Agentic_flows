@@ -10,54 +10,48 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_huggingface import ChatHuggingFace,HuggingFacePipeline
 from langchain_tavily import TavilySearch
+from langchain_groq import ChatGroq
 import torch
 import os
 
 
 
 load_dotenv()
-base_model = "meta-llama/Llama-3.2-1B-Instruct"
-local_dir = "../llama3_local"
+base_model = "llama-3.1-70b-versatile",
 api = os.getenv("HF_TOKEN")
 tavily = os.getenv("TAVILY_API")
 
-tokenizer = AutoTokenizer.from_pretrained(
-    base_model,
-    use_auth_token=api,
-    cache_dir=local_dir,
+llm = ChatGroq(
+    api_key = api,
+    model = base_model,
+    temperature=0
 )
 
-model = AutoModelForCausalLM.from_pretrained(
-    base_model,
-    use_auth_token=api,
-    torch_dtype=torch.float16,
-    cache_dir=local_dir,
-    device_map="auto",
-)
+# tokenizer = AutoTokenizer.from_pretrained(
+#     base_model,
+#     use_auth_token=api,
+#     cache_dir=local_dir,
+# )
 
-hf_pipeline = pipeline(
-    "text-generation",
-    model=model,
-    tokenizer=tokenizer,
-    max_new_tokens=512,
-    do_sample=True,
-    temperature=0.7
-)
-
-hf_llm = HuggingFacePipeline(pipeline=hf_pipeline)
-
-llm = ChatHuggingFace(llm=hf_llm)
-
-# llm = ChatHuggingFace.from_model_id(
-#     model_id="meta-llama/Llama-3.2-1B-Instruct",
-#     task="text-generation",
-#     max_new_tokens=512,
-#     temperature=0.7,
+# model = AutoModelForCausalLM.from_pretrained(
+#     base_model,
+#     use_auth_token=api,
+#     torch_dtype=torch.float16,
+#     cache_dir=local_dir,
 #     device_map="auto",
 # )
 
-# add_messages is a reducer it appends messages into the list
-# #
+# hf_pipeline = pipeline(
+#     "text-generation",
+#     model=model,
+#     tokenizer=tokenizer,
+#     max_new_tokens=512,
+#     do_sample=True,
+#     temperature=0.7
+# )
+
+# hf_llm = HuggingFacePipeline(pipeline=hf_pipeline)
+
 
 
 class State(TypedDict):
@@ -105,13 +99,7 @@ llm_with_tool = llm.bind_tools(tools)
 
 def tool_calling_llm(state:State):
     messages = state["messages"]
-    if isinstance(messages[-1], HumanMessage):
-        prompt = messages[-1].content
-    elif isinstance(messages, str):
-        prompt = messages
-    else:
-        raise ValueError(f"Unsupported message format: {type(messages)}")
-    response = llm_with_tool.invoke(prompt)
+    response = llm_with_tool.invoke(messages)
 
     return {"messages":[response]}
 
@@ -131,8 +119,9 @@ graph=graph_builder.compile()
 def answer_query(query):
     response = graph.invoke({"messages": [HumanMessage(content=query)]})
     print(response)
-    print("_-----")
-    print(response["messages"][-1])
+    print("-------------------")
+    for m in response['messages']:
+        m.pretty_print()
     # for event in graph.stream({"messages":[HumanMessage(content=query)]}):
     #     print(event)
 
