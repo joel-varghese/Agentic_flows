@@ -17,7 +17,7 @@ import os
 
 
 load_dotenv()
-base_model = "llama-3.1-70b-versatile"
+base_model = "llama-3.3-70b-versatile"
 api = os.getenv("GROQ_API_KEY")
 tavily = os.getenv("TAVILY_API")
 
