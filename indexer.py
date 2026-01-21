@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_huggingface import ChatHuggingFace,HuggingFacePipeline
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
-from langgraph.checkpointer.memory import MemorySaver
+from langgraph.checkpoint.memory import MemorySaver
 import torch
 import os
 
