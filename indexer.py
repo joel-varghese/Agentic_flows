@@ -111,7 +111,7 @@ graph_builder.add_edge(START,"tool_calling_llm")
 graph_builder.add_conditional_edges(
     "tool_calling_llm", tools_condition
 )
-graph_builder.add_edge("tools",END)
+graph_builder.add_edge("tools","tool_calling_llm")
 
 
 graph=graph_builder.compile()
