@@ -127,7 +127,7 @@ def answer_query(query):
     for m in response['messages']:
         print(m.pretty_print())
         print("-------------------")
-        display += m.pretty_print() + "\n-------------------\n"
+        display += m.content + "\n-------------------\n"
     # for event in graph.stream({"messages":[HumanMessage(content=query)]}):
     #     print(event)
 
