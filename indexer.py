@@ -11,10 +11,13 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_huggingface import ChatHuggingFace,HuggingFacePipeline
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
+from langgraph.checkpointer.memory import MemorySaver
 import torch
 import os
 
 
+
+memory = MemorySaver()
 
 load_dotenv()
 base_model = "llama-3.3-70b-versatile"
@@ -114,10 +117,12 @@ graph_builder.add_conditional_edges(
 graph_builder.add_edge("tools","tool_calling_llm")
 
 
-graph=graph_builder.compile()
+graph=graph_builder.compile(chevckpointer=memory)
+
+config = {"configurable":{"thread_id":"1"}}
 
 def answer_query(query):
-    response = graph.invoke({"messages": [HumanMessage(content=query)]})
+    response = graph.invoke({"messages": [HumanMessage(content=query)]}, config=config)
     display = ""
     for m in response['messages']:
         print(m.pretty_print())
