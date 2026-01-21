@@ -118,10 +118,9 @@ graph=graph_builder.compile()
 
 def answer_query(query):
     response = graph.invoke({"messages": [HumanMessage(content=query)]})
-    print(response)
-    print("-------------------")
     for m in response['messages']:
-        m.pretty_print()
+        print(m.pretty_print())
+        print("-------------------")
     # for event in graph.stream({"messages":[HumanMessage(content=query)]}):
     #     print(event)
 
@@ -145,6 +144,11 @@ def answer_query(query):
 # Doc String is used to know what are thre inputs and arguments : If they match LLM make a call to Tool
 # Instead of relying on its own response.
 # 
+# ReACT agent aplits the query into multiple statements and repeatedly solves query part by part
+# 1. Act
+# 2. Observe
+# 3. Reason
+# #
 # Binding tools with LLMs #
 
 
