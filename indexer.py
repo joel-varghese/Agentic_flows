@@ -117,7 +117,7 @@ graph_builder.add_conditional_edges(
 graph_builder.add_edge("tools","tool_calling_llm")
 
 
-graph=graph_builder.compile(chevckpointer=memory)
+graph=graph_builder.compile(checkpointer=memory)
 
 config = {"configurable":{"thread_id":"1"}}
 
