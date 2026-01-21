@@ -118,13 +118,15 @@ graph=graph_builder.compile()
 
 def answer_query(query):
     response = graph.invoke({"messages": [HumanMessage(content=query)]})
+    display = ""
     for m in response['messages']:
         print(m.pretty_print())
         print("-------------------")
+        display += m.pretty_print() + "\n-------------------\n"
     # for event in graph.stream({"messages":[HumanMessage(content=query)]}):
     #     print(event)
 
-    return response["messages"][-1].content
+    return display
 
 
 
