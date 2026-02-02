@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph,START,END
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt import tools_condition
 from langgraph.graph.message import add_messages 
+from langchain_core.tools import tool
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain_community.llms import HuggingFacePipeline
 from dotenv import load_dotenv
@@ -12,6 +13,8 @@ from langchain_huggingface import ChatHuggingFace,HuggingFacePipeline
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import Command, interrupt
+
 import torch
 import os
 
@@ -91,49 +94,69 @@ def multiply(a:int,b:int)->int:
     return a*b
 
 
-tool = TavilySearch(max_results=2, tavily_api_key=tavily)
-# tool.invoke("What is langgraph ?")
-
-
-
-tools=[tool,multiply]
-llm_with_tool = llm.bind_tools(tools)
-
-
 def tool_calling_llm(state:State):
     messages = state["messages"]
     response = llm_with_tool.invoke(messages)
 
     return {"messages":[response]}
 
+
+@tool
+def human_assistance(query: str) -> str:
+    """Request permission from a human to proceed with action"""
+    human_response = interrupt({"query": query})
+    return human_response["data"]
+
+
+
+tool = TavilySearch(max_results=2, tavily_api_key=tavily)
+tools=[tool,multiply, human_assistance]
+llm_with_tool = llm.bind_tools(tools)
+
+
 # Adding Node
-graph_builder.add_node("tool_calling_llm", tool_calling_llm)
-graph_builder.add_node("tools",ToolNode(tools))
+graph_builder.add_node("chatbot", chatbot)
+
+tool_node = ToolNode(tools=tools)
+
+graph_builder.add_node("tools", tool_node)
 # Adding Edges
-graph_builder.add_edge(START,"tool_calling_llm")
+
 graph_builder.add_conditional_edges(
-    "tool_calling_llm", tools_condition
+    "chatbot", tools_condition
 )
-graph_builder.add_edge("tools","tool_calling_llm")
+
+graph_builder.add_edge("tools","chatbot")
+graph_builder.add_edge(START, "chatbot")
 
 
 graph=graph_builder.compile(checkpointer=memory)
 
 config = {"configurable":{"thread_id":"1"}}
 
-def answer_query(query):
-    response = graph.invoke({"messages": [HumanMessage(content=query)]}, config=config)
-    display = ""
-    for m in response['messages']:
-        print(m.pretty_print())
-        print("-------------------")
-        display += m.content + "\n-------------------\n"
-    # for event in graph.stream({"messages":[HumanMessage(content=query)]}):
-    #     print(event)
 
-    return display
+def answer_query(query, resume_data=None):
 
+    if resume_data: 
+        events = graph.stream(
+            Command(resume=resume_data), config=config, stream_mode="values"
+        )
+    else:
+        events = graph.stream(
+            {"messages":[HumanMessage(content=query)]}, config=config, stream_mode="values"
+        )
 
+    for event in events:
+        msg = event["messages"][-1].content
+        if isinstance(msg, dict) and "query" in msg:
+            return {
+                "status": "HUMAN_NEEDED",
+                "query": msg["query"]
+            }
+        return {
+            "status": "DONE",
+            "response": msg
+        }
 
 # Start
 # LLM + promt -> Chatbot 
