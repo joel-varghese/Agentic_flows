@@ -146,6 +146,8 @@ def answer_query(query, resume_data=None):
             {"messages":[HumanMessage(content=query)]}, config=config, stream_mode="values"
         )
 
+    final_msg = None
+
     for event in events:
         msg = event["messages"][-1].content
         if isinstance(msg, dict) and "query" in msg:
@@ -153,10 +155,12 @@ def answer_query(query, resume_data=None):
                 "status": "HUMAN_NEEDED",
                 "query": msg["query"]
             }
-        return {
-            "status": "DONE",
-            "response": msg
-        }
+        final_msg = msg
+
+    return {
+        "status": "DONE",
+        "response": final_msg
+    }
 
 # Start
 # LLM + promt -> Chatbot 
