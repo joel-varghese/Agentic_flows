@@ -7,8 +7,8 @@ from langgraph.prebuilt import tools_condition
 from langgraph.graph.message import add_messages 
 from langchain_core.tools import tool
 from dotenv import load_dotenv
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
@@ -26,6 +26,7 @@ api = os.getenv("GROQ_API_KEY")
 tavily = os.getenv("TAVILY_API")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 # ==================== LLM =======================
 llm = ChatGroq(
@@ -47,21 +48,21 @@ def send_email_tool(to_email: str, subject: str, body: str) -> str:
         body: Email body content
     """
 
-    msg = MIMEMultipart()
-    msg["From"] = SENDER_EMAIL
-    msg["To"] = to_email
-    msg["Subject"] = subject
+    try:
+        message = Mail(
+            from_email=SENDER_EMAIL,
+            to_emails=to_email,
+            subject=subject,
+            plain_text_content=body,
+        )
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        sg.send(message)
 
+        return f"Email successfully sent to {to_email}"
 
-    msg.attach(MIMEText(body, "plain"))
-
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.send_message(msg)
-
-    return f"Email successfully sent to {to_email}"
-
+    except Exception as e:
+        return f"Failed to send email: {str(e)}"
+    
 tools = [send_email_tool]
 llm_with_tools = llm.bind_tools(tools)
 

@@ -12,6 +12,7 @@ accelerate
 sentencepiece
 peft
 trl
+sendgrid
 langchain-core>=0.3.0
 langchain-community>=0.3.0
 langchain-openai
