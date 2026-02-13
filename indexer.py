@@ -9,7 +9,7 @@ from langchain_core.tools import tool
 from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
@@ -75,7 +75,17 @@ graph_builder=StateGraph(State)
 # ==================== NODES =======================
 
 def chatbot(state:State):
-    response = llm_with_tools.invoke(state["messages"])
+    response = llm_with_tools.invoke([
+    SystemMessage(content="""
+    You are an email assistant.
+    When the user wants to send an email:
+    - Extract recipient email
+    - Generate subject
+    - Generate professional body
+    - ALWAYS call send_email_tool
+    """),
+        *state["messages"]
+    ])
     return {"messages":[response]}
 
 # ==================== GRAPH =======================
