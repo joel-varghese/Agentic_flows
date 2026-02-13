@@ -21,7 +21,7 @@ import os
 # memory = MemorySaver()
 
 load_dotenv()
-base_model = "gpt-4o-mini"
+base_model = "openai/gpt-oss-120b"
 api = os.getenv("GROQ_API_KEY")
 tavily = os.getenv("TAVILY_API")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
