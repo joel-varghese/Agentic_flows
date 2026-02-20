@@ -24,10 +24,10 @@ async def callback(request: Request):
 def chat_interface(message):
     return run_agent(message)
 
-gradio_ui = gr.Interface(
+demo = gr.Interface(
     fn=chat_interface,
     inputs="text",
     outputs="text"
 )
 
-app = gr.mount_gradio_app(app, gradio_ui, path="/")
+demo.launch(server_name="0.0.0.0", server_port=7860)
