@@ -3,6 +3,7 @@ langchain>=0.3.0
 langsmith
 python-dotenv
 langchain-groq
+gradio
 pandas
 numpy
 scikit-learn
@@ -18,3 +19,8 @@ langchain-community>=0.3.0
 langchain-openai
 langchain_tavily>=0.1.0
 langchain_huggingface>=0.1.0
+fastapi
+google-auth 
+google-auth-oauthlib 
+google-auth-httplib2 
+google-api-python-client

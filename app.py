@@ -1,38 +1,33 @@
 import gradio as gr
-from indexer import run_email_agent
+from fastapi import FastAPI, Request
+from google_auth import get_auth_url, fetch_token
+from agent import run_agent
+import json
 
-with gr.Blocks(css="""
-    body {background-color: #fffaf0;}  /* Light creme background */
-    .gr-textbox {min-height: 200px;}  /* Make textboxes taller */
-""") as demo:
-    gr.Markdown("## Tool-Based AI Email Agent")
+app = FastAPI()
 
-    user_input = gr.Textbox(
-        label="User Query",
-        placeholder="Type your question here...",
-        lines=4  # make input box slightly bigger
-    )
-    submit_btn = gr.Button("Run Agent")
+@app.get("/login")
+def login():
+    auth_url, state = get_auth_url()
+    return {"auth_url": auth_url}
 
-    output = gr.Textbox(
-        label="Agent Response",
-        placeholder="The agent will respond here...",
-        lines=10  # bigger response box
-    )
+@app.get("/auth/callback")
+async def callback(request: Request):
+    code = request.query_params.get("code")
+    token_data = fetch_token(code)
 
-    human_box = gr.Textbox(
-        label="Human Assistance Required",
-        visible=False
-    )
+    with open("user_token.json", "w") as f:
+        json.dump(token_data, f)
 
-    def handle_query(text):
-        response = run_email_agent(text)
-        return response
+    return {"status": "Login successful. You may close this tab."}
 
-    submit_btn.click(
-        handle_query,
-        inputs=user_input,
-        outputs=output
-    )
+def chat_interface(message):
+    return run_agent(message)
 
-demo.launch()
+gradio_ui = gr.Interface(
+    fn=chat_interface,
+    inputs="text",
+    outputs="text"
+)
+
+app = gr.mount_gradio_app(app, gradio_ui, path="/")

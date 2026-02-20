@@ -14,6 +14,7 @@ from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command, interrupt
+from drive_tools import search_and_download_doc_tool
 import os
 
 
@@ -63,7 +64,7 @@ def send_email_tool(to_email: str, subject: str, body: str) -> str:
     except Exception as e:
         return f"Failed to send email: {str(e)}"
     
-tools = [send_email_tool]
+tools = [search_and_download_doc_tool, send_email_tool]
 llm_with_tools = llm.bind_tools(tools)
 
 # ==================== STATE =======================
@@ -77,12 +78,16 @@ graph_builder=StateGraph(State)
 def chatbot(state:State):
     response = llm_with_tools.invoke([
     SystemMessage(content="""
-    You are an email assistant.
-    When the user wants to send an email:
-    - Extract recipient email
-    - Generate subject
-    - Generate professional body
-    - ALWAYS call send_email_tool
+    You are an AI assistant with access to tools.
+
+    Available tools:
+    1. send_email_tool → Use when the user wants to send an email.
+    2. search_and_download_doc_tool → Use when the user wants to find or download a document from Google Drive.
+
+    Rules:
+    - Always call the appropriate tool when the request requires action.
+    - Do NOT respond with plain text if an action is required.
+    - After tool execution, summarize the result for the user.
     """),
         *state["messages"]
     ])
@@ -115,15 +120,11 @@ graph=graph_builder.compile()
 
 # ==================== ENTRY FUNCTION =======================
 
-def run_email_agent(user_input: str):
+def run_agent(user_input: str):
     result = graph.invoke({
         "messages": [HumanMessage(content=user_input)]
     })
-
-    final_message = result["messages"][-1].content
-    return final_message
-
-
+    return result["messages"][-1].content
 
 # Start
 # LLM + promt -> Chatbot 
