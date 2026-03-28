@@ -9,7 +9,7 @@ from langchain_core.tools import tool
 from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver

@@ -9,6 +9,7 @@ load_dotenv()
  
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
+TABLE = "google_tokens"
 
 def _get_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_KEY:
