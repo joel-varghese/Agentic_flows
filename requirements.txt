@@ -1,3 +1,7 @@
+websockets>=11,<12
+realtime>=1.0.0
+supabase>=2.4.0
+
 langgraph>=0.2.0
 langchain>=0.3.0
 langsmith
@@ -20,8 +24,6 @@ langchain-openai
 langchain_tavily>=0.1.0
 langchain_huggingface>=0.1.0
 fastapi
-supabase
-websockets>=11.0
 google-auth 
 google-auth-oauthlib 
 google-auth-httplib2 
