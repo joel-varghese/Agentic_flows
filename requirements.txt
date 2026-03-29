@@ -21,7 +21,7 @@ langchain_tavily>=0.1.0
 langchain_huggingface>=0.1.0
 fastapi
 supabase
-websockets
+websockets>=11.0
 google-auth 
 google-auth-oauthlib 
 google-auth-httplib2 
