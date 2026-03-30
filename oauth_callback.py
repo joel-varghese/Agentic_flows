@@ -1,7 +1,7 @@
 """Handles the google OAuth 2.0 redirect callback"""
 
 from google_auth_flow import exchange_code_for_token
-from supabase_auth import save_token
+from token_store import save_token
 
 def handle_oauth_callback(code: str, state: str) -> dict:
     """

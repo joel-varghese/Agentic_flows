@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
  
-from supabase_auth import get_token, save_token
+from token_store import get_token, save_token
 from google_auth_flow import credentials_from_token_dict, get_auth_url
 
 AUTH_REQUIRED_PREFIX = "AUTH_REQUIRED::"
