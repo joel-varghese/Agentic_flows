@@ -1,4 +1,4 @@
-websockets>=11,<12
+websockets>=12
 realtime>=1.0.0
 supabase>=2.4.0
 
