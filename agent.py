@@ -14,7 +14,7 @@ from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command, interrupt
-from drive_tools import search_and_download_doc_tool
+from drive_tools import search_and_download_doc_tool, AUTH_REQUIRED_PREFIX
 import os
 
 
