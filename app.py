@@ -1,7 +1,9 @@
 import gradio as gr
+from fastapi import FastAPI
 from agent import graph
 from oauth_callback import handle_oauth_callback
 
+app = FastAPI()
 # ── Persistent thread so MemorySaver keeps conversation context ───────────────
 THREAD_CONFIG = {"configurable": {"thread_id": "default-thread"}}
 
@@ -32,19 +34,23 @@ def chat(user_message: str, history: list) -> str:
  
  
 # ── OAuth callback endpoint ───────────────────────────────────────────────────
- 
-def oauth_callback_page(request: gr.Request) -> str:
+@app.get("/oauth/callback")
+async def oauth_callback(code: str = "", state: str = ""):
     """
     Gradio page that Google redirects to after the user grants consent.
     Mount at /oauth/callback in your Space.
     """
-    params = dict(request.query_params)
-    code  = params.get("code", "")
-    state = params.get("state", "")
     result = handle_oauth_callback(code, state)
     if result["success"]:
-        return f"<h2>{result['message']}</h2><p>You can close this tab and return to the chat.</p>"
-    return f"<h2>❌ Authentication failed</h2><p>{result['message']}</p>"
+        return {
+            "status": "success",
+            "message": result["message"],
+            "instruction": "You can close this tab and return to the app."
+        }
+    return {
+        "status": "error",
+        "message": result["message"]
+    }
  
  
 # ── Gradio UI ─────────────────────────────────────────────────────────────────
@@ -55,14 +61,7 @@ with gr.Blocks(title="AI Agent") as demo:
     with gr.Tab("Chat"):
         gr.ChatInterface(fn=chat)
  
-    # Hidden page — Google redirects here after OAuth
-    with gr.Tab("OAuth Callback", visible=False) as callback_tab:
-        callback_output = gr.HTML()
- 
-    # Route /oauth/callback → the handler above
-    demo.load(fn=None)   # placeholder; real routing done via gr.mount_gradio_app or FastAPI
  
  
 # ── For local dev, run directly ───────────────────────────────────────────────
-if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+app = gr.mount_gradio_app(app, demo, path="/")
