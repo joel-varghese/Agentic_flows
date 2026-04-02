@@ -17,8 +17,6 @@ CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
 
-print("google client secret:", CLIENT_SECRET)
-
 
 def _client_config() -> dict:
     """Builds the client config dict that google_auth_oauthlib expects."""
