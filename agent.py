@@ -28,6 +28,8 @@ tavily = os.getenv("TAVILY_API")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+print("tavily:",tavily)
+print("sendgrid:", SENDGRID_API_KEY)
 
 # ==================== LLM =======================
 llm = ChatGroq(
