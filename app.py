@@ -22,7 +22,9 @@ def chat(user_message: str, history: list) -> str:
         if "__interrupt__" in event:
             interrupt_val = event["__interrupt__"][0].value
             if interrupt_val.get("type") == "auth_required":
-                return interrupt_val["message"]
+                auth_url = interrupt_val["auth_url"]
+                message = interrupt_val["message"]
+                return f"{message}\n\n -> **Click here to authenticate:** {auth_url}"
  
         msgs = event.get("messages", [])
         for msg in reversed(msgs):

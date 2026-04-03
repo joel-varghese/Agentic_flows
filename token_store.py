@@ -28,9 +28,9 @@ def get_token(user_email: str) -> dict | None:
         .maybe_single()
         .execute()
     )
-    if result.data:
-        return json.loads(result.data["token_json"])
-    return None
+    if result is None or not result.data:
+        return None
+    return json.loads(result.data["token_json"])
 
 def save_token(user_email: str, token_dict: dict) -> None:
     """
