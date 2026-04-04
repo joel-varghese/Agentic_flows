@@ -43,6 +43,7 @@ async def oauth_callback(code: str = "", state: str = ""):
     Mount at /oauth/callback in your Space.
     """
     result = handle_oauth_callback(code, state)
+    print(f">>> OAuth result: {result}")
     if result["success"]:
         return {
             "status": "success",

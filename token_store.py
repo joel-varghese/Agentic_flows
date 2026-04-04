@@ -37,13 +37,13 @@ def save_token(user_email: str, token_dict: dict) -> None:
     Upserts (insert or update) the Google OAuth token for the user.
     """
     client = _get_client()
-    client.table(TABLE).upsert(
+    response =client.table(TABLE).upsert(
         {
             "user_email": user_email,
             "token_json": json.dumps(token_dict),
         }
     ).execute()
-
+    print(f">>> Token saved for {user_email}: {response.data}")
 
 def delete_token(user_email: str) -> None:
     """
