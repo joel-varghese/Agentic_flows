@@ -25,7 +25,7 @@ def handle_oauth_callback(code: str, state: str) -> dict:
         return {"success": False, "user_email": "", "message": "No user email in OAuth state parameter."}
  
     try:
-        token_dict = exchange_code_for_token(code)
+        token_dict = exchange_code_for_token(code, state)
         save_token(user_email, token_dict)
         return {
             "success": True,

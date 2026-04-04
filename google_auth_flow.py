@@ -10,7 +10,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email",
     "openid",
 ]
-
+oauth_pkce_store: dict[str, str] = {}
 load_dotenv()
  
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -37,21 +37,29 @@ def get_auth_url(state: str | None = None) -> str:
     """
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
     flow.redirect_uri = REDIRECT_URI
-    auth_url, _ = flow.authorization_url(
+    auth_url, returned_state = flow.authorization_url(
         access_type="offline",   # get refresh_token
         include_granted_scopes="true",
         prompt="consent",        # force refresh_token every time during dev
         state=state or "",
     )
+    oauth_pkce_store[returned_state] = flow.code_verifier
+    print(">>> Stored PKCE verifier for state:", returned_state)
     return auth_url
 
-def exchange_code_for_token(code: str) -> dict:
+def exchange_code_for_token(code: str, state: str) -> dict:
     """
     Exchanges an authorization code (from the OAuth callback) for credentials.
     Returns a JSON-serialisable token dict.
     """
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
     flow.redirect_uri = REDIRECT_URI
+    code_verifier = oauth_pkce_store.get(state)
+
+    print(">>> Retrieved verifier:", code_verifier)
+
+    flow.code_verifier = code_verifier
+    
     flow.fetch_token(code=code)
     creds = flow.credentials
     return _creds_to_dict(creds)
