@@ -1,17 +1,37 @@
 import gradio as gr
 from fastapi import FastAPI
+from pydantic import BaseModel
 from agent import graph
 from oauth_callback import handle_oauth_callback
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 # ── Persistent thread so MemorySaver keeps conversation context ───────────────
 THREAD_CONFIG = {"configurable": {"thread_id": "default-thread"}}
 
+class ChatRequest(BaseModel):
+    message: str
 
-def chat(user_message: str, history: list) -> str:
-    """Called by the Gradio ChatInterface on each user message."""
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
+@app.post("/chat")
+def chat(req: ChatRequest):
     events = graph.stream(
-        {"messages": [{"role": "user", "content": user_message}]},
+        {"messages": [{"role": "user", "content": req.message}]},
         config=THREAD_CONFIG,
         stream_mode="values",
     )
@@ -22,49 +42,33 @@ def chat(user_message: str, history: list) -> str:
         if "__interrupt__" in event:
             interrupt_val = event["__interrupt__"][0].value
             if interrupt_val.get("type") == "auth_required":
-                auth_url = interrupt_val["auth_url"]
-                message = interrupt_val["message"]
-                return f"{message}\n\n -> **Click here to authenticate:** {auth_url}"
- 
+                return {
+                    "type": "auth_required",
+                    "auth_url": interrupt_val["auth_url"],
+                    "message": interrupt_val["message"]
+                }
+            
         msgs = event.get("messages", [])
         for msg in reversed(msgs):
             if hasattr(msg, "content") and msg.type == "ai" and not msg.tool_calls:
                 last_ai_text = msg.content
                 break
  
-    return last_ai_text or "Done."
+    return {"type": "response", "response": last_ai_text or "Done."}
  
  
 # ── OAuth callback endpoint ───────────────────────────────────────────────────
 @app.get("/oauth/callback")
 async def oauth_callback(code: str = "", state: str = ""):
-    """
-    Gradio page that Google redirects to after the user grants consent.
-    Mount at /oauth/callback in your Space.
-    """
     result = handle_oauth_callback(code, state)
     print(f">>> OAuth result: {result}")
     if result["success"]:
         return {
             "status": "success",
             "message": result["message"],
-            "instruction": "You can close this tab and return to the app."
         }
     return {
         "status": "error",
         "message": result["message"]
     }
  
- 
-# ── Gradio UI ─────────────────────────────────────────────────────────────────
- 
-with gr.Blocks(title="AI Agent") as demo:
-    gr.Markdown("## 🤖 AI Agent  |  Email · Google Drive")
- 
-    with gr.Tab("Chat"):
-        gr.ChatInterface(fn=chat)
- 
- 
- 
-# ── For local dev, run directly ───────────────────────────────────────────────
-app = gr.mount_gradio_app(app, demo, path="/")

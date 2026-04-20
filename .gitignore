@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv
+venv/
+.env
+.venv/
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Local config
+config.json
+credentials.json
+client_secret.json
+
+# Token store files
+tokens.json
+
+# Docker
+*.log
+
+# Ignore notebooks
+*.ipynb
