@@ -32,7 +32,7 @@ def handle_oauth_callback(code: str, state: str) -> dict:
         return {
             "success": True,
             "user_email": user_email,
-            "message": f"✅ Google Drive access granted and token saved for {user_email}. You can now search your Drive.",
+            "message": f"✅ Google access granted and token saved for {user_email}. You can retry your request.",
         }
     except Exception as e:
         return {
