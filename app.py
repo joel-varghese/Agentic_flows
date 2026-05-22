@@ -59,8 +59,8 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
 
 class ChatRequest(BaseModel):
     message: str
-    user_id: str | None = "anonymous"
-    channel: str | None = "web"
+    user_id: str = "anonymous"
+    channel: str = "web"
     thread_id: str | None = None
 
 @app.get("/")
