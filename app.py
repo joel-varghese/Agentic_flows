@@ -108,6 +108,11 @@ async def slack_events(req: Request):
             channel=channel_id,
             text=result["response"]
         )
+    elif result["type"] == "auth_required":
+        slack_client.chat_postMessage(
+            channel=channel_id,
+            text=result["message"]
+        )
 
     return {"ok": True}
 

@@ -5,40 +5,25 @@ from googleapiclient.errors import HttpError
 from datetime import datetime, timedelta
 import uuid
 
-from google_auth_flow import (
-    credentials_from_token_dict,
-    get_auth_url
+from google_auth_helpers import (
+    auth_required_message,
+    get_google_credentials,
+    is_auth_failure,
 )
-from token_store import get_token, save_token
-from drive_tools import AUTH_REQUIRED_PREFIX
 
 
 def _calendar_service(user_email: str):
     """
-    Returns authenticated Google Calendar service.
+    Returns (Calendar service, auth_message).
+    auth_message is set when the user must re-authenticate.
     """
+    creds, auth_msg = get_google_credentials(user_email)
+    if auth_msg:
+        return None, auth_msg
+    if creds is None:
+        return None, auth_required_message(user_email, "Google Calendar")
 
-    token_dict = get_token(user_email)
-
-    if not token_dict:
-        return None
-    
-    creds = credentials_from_token_dict(token_dict)
-
-    save_token(user_email, {
-        "token": creds.token,
-        "refresh_token": creds.refresh_token,
-        "token_uri": creds.token_uri,
-        "client_id": creds.client_id,
-        "client_secret": creds.client_secret,
-        "scopes": list(creds.scopes or []),
-        "expiry": creds.expiry.isoformat() if creds.expiry else None,
-    })
-
-    return build("calendar", "v3", credentials=creds)
-
-
-
+    return build("calendar", "v3", credentials=creds), None
 
 
 @tool
@@ -67,19 +52,11 @@ def create_calendar_event_tool(
             Example: America/New_York
     """
 
-    service = _calendar_service(user_email)
-
-    if service is None:
-        auth_url = get_auth_url(state=user_email)
-
-        return (
-            f"{AUTH_REQUIRED_PREFIX}{auth_url}\n"
-            f"User {user_email} is not authenticated with Google Calendar. "
-            f"They must visit the URL above to grant access."
-        )
+    service, auth_msg = _calendar_service(user_email)
+    if auth_msg:
+        return auth_msg
 
     try:
-
         start_dt = datetime.fromisoformat(start_time)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
@@ -116,7 +93,7 @@ def create_calendar_event_tool(
 
         meet_link = created_event.get(
             "hangoutLink",
-            "No Meet link generated."            
+            "No Meet link generated."
         )
 
         html_link = created_event.get(
@@ -133,9 +110,13 @@ def create_calendar_event_tool(
             f"Google Meet: {meet_link}\n"
             f"Calendar Event: {html_link}"
         )
-    
+
     except HttpError as e:
+        if is_auth_failure(e):
+            return auth_required_message(user_email, "Google Calendar", revoke=True)
         return f"Google Calendar API error: {str(e)}"
 
     except Exception as e:
+        if is_auth_failure(e):
+            return auth_required_message(user_email, "Google Calendar", revoke=True)
         return f"Failed to create calendar invite: {str(e)}"
