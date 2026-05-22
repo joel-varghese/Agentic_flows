@@ -69,10 +69,14 @@ def root():
 
 @app.post("/chat")
 def chat(req: ChatRequest):
+
+    user_id = req.user_id or "anonymous"
+    channel = req.channel or "web"
+
     result = run_agent(
         message=req.message,
-        user_id=req.user_id or "anonymous",
-        channel=req.channel or "web",
+        user_id=user_id,
+        channel=channel,
         thread_id=req.thread_id
     )
 
