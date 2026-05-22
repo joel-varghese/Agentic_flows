@@ -1,39 +1,84 @@
 from langchain_core.tools import tool
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
 from datetime import datetime, timedelta
 import uuid
 
-from google_auth_flow import credentials_from_token_dict
-from token_store import load_token
+from google_auth_flow import (
+    credentials_from_token_dict,
+    get_auth_url
+)
+from token_store import get_token, save_token
+from drive_tools import AUTH_REQUIRED_PREFIX
+
+
+def _calender_service(user_email: str):
+    """
+    Returns authenticated Google Calendar service.
+    """
+
+    token_dict = get_token(user_email)
+
+    if not token_dict:
+        return None
+    
+    creds = credentials_from_token_dict(token_dict)
+
+    save_token(user_email, {
+        "token": creds.token,
+        "refresh_token": creds.refresh_token,
+        "token_uri": creds.token_uri,
+        "client_id": creds.client_id,
+        "client_secret": creds.client_secret,
+        "scopes": list(creds.scopes or []),
+        "expiry": creds.expiry.isoformat() if creds.expiry else None,
+    })
+
+    return build("calender", "v3", credentials=creds)
+
+
+
+
 
 @tool
 def create_calender_event_tool(
+    user_email: str,
     attendee_email: str,
     title: str,
     start_time: str,
     duration_minutes: int = 30,
-    description: str = ""
+    description: str = "",
+    timezone: str = "UTC",
 ) -> str:
     """
     Creates a Google Calendar event with a Google Meet link.
 
     Args:
-        attendee_email: Email of invitee
+        user_email: Email of authenticated Google user
+        attendee_email: Recipient invited to the meeting
         title: Meeting title
         start_time: ISO datetime format
+            Example:
+            2026-05-25T15:00:00
         duration_minutes: Meeting duration
         description: Optional meeting description
+        timezone: Timezone string
+            Example: America/New_York
     """
 
+    service = _calender_service(user_email)
+
+    if service is None:
+        auth_url = get_auth_url(state=user_email)
+
+        return (
+            f"{AUTH_REQUIRED_PREFIX}{auth_url}\n"
+            f"User {user_email} is not authenticated with Google Calendar. "
+            f"They must visit the URL above to grant access."
+        )
+
     try:
-        token_dict = load_token()
-
-        if not token_dict:
-            return "User not authenticated with Google."
-        
-        creds = credentials_from_token_dict(token_dict)
-
-        service = build("calender", "v3", credentials=creds)
 
         start_dt = datetime.fromisoformat(start_time)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
@@ -43,11 +88,11 @@ def create_calender_event_tool(
             "description": description,
             "start": {
                 "dateTime": start_dt.isoformat(),
-                "timeZone": "UTC",
+                "timeZone": timezone,
             },
             "end": {
                 "dateTime": end_dt.isoformat(),
-                "timeZone": "UTC",
+                "timeZone": timezone,
             },
             "attendees": [
                 {"email": attendee_email}
@@ -74,10 +119,23 @@ def create_calender_event_tool(
             "No Meet link generated."            
         )
 
+        html_link = created_event.get(
+            "htmlLink",
+            "No calender link available"
+        )
+
         return (
-            f"Calendar invite created successfully.\n"
-            f"Google Meet Link: {meet_link}"
+            f"Calendar invite created successfully.\n\n"
+            f"Event: {title}\n"
+            f"Attendee: {attendee_email}\n"
+            f"Start: {start_dt.isoformat()} ({timezone})\n"
+            f"Duration: {duration_minutes} minutes\n\n"
+            f"Google Meet: {meet_link}\n"
+            f"Calendar Event: {html_link}"
         )
     
+    except HttpError as e:
+        return f"Google Calender API error: {str(e)}"
+
     except Exception as e:
         return f"Failed to create calendar invite: {str(e)}"
