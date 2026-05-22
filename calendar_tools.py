@@ -13,7 +13,7 @@ from token_store import get_token, save_token
 from drive_tools import AUTH_REQUIRED_PREFIX
 
 
-def _calender_service(user_email: str):
+def _calendar_service(user_email: str):
     """
     Returns authenticated Google Calendar service.
     """
@@ -35,14 +35,14 @@ def _calender_service(user_email: str):
         "expiry": creds.expiry.isoformat() if creds.expiry else None,
     })
 
-    return build("calender", "v3", credentials=creds)
+    return build("calendar", "v3", credentials=creds)
 
 
 
 
 
 @tool
-def create_calender_event_tool(
+def create_calendar_event_tool(
     user_email: str,
     attendee_email: str,
     title: str,
@@ -67,7 +67,7 @@ def create_calender_event_tool(
             Example: America/New_York
     """
 
-    service = _calender_service(user_email)
+    service = _calendar_service(user_email)
 
     if service is None:
         auth_url = get_auth_url(state=user_email)
@@ -108,7 +108,7 @@ def create_calender_event_tool(
         }
 
         created_event = service.events().insert(
-            calenderId="primary",
+            calendarId="primary",
             body=event,
             conferenceDataVersion=1,
             sendUpdates="all"
@@ -121,7 +121,7 @@ def create_calender_event_tool(
 
         html_link = created_event.get(
             "htmlLink",
-            "No calender link available"
+            "No calendar link available"
         )
 
         return (
@@ -135,7 +135,7 @@ def create_calender_event_tool(
         )
     
     except HttpError as e:
-        return f"Google Calender API error: {str(e)}"
+        return f"Google Calendar API error: {str(e)}"
 
     except Exception as e:
         return f"Failed to create calendar invite: {str(e)}"

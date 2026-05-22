@@ -15,7 +15,7 @@ from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command, interrupt
 from drive_tools import search_and_download_doc_tool, AUTH_REQUIRED_PREFIX
-from calender_tools import create_calender_event_tool
+from calendar_tools import create_calendar_event_tool
 import os
 
 
@@ -65,7 +65,7 @@ def send_email_tool(to_email: str, subject: str, body: str) -> str:
     except Exception as e:
         return f"Failed to send email: {str(e)}"
     
-tools = [search_and_download_doc_tool, send_email_tool, create_calender_event_tool]
+tools = [search_and_download_doc_tool, send_email_tool, create_calendar_event_tool]
 llm_with_tools = llm.bind_tools(tools)
 
 # ==================== STATE =======================
@@ -83,7 +83,7 @@ def chatbot(state:State):
     Available tools:
     1. send_email_tool → Use when the user wants to send an email.
     2. search_and_download_doc_tool → Use when the user wants to find or download a document from Google Drive.
-    3. create_calender_event_tool → Use when the user wants to schedule a meeting, send a calendar invite, or create a Google Meet.
+    3. create_calendar_event_tool → Use when the user wants to schedule a meeting, send a calendar invite, or create a Google Meet.
 
     Rules:
     - Always call the appropriate tool when the request requires action.
