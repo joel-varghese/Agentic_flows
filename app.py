@@ -43,10 +43,11 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
         if "__interrupt__" in event:
             interrupt_val = event["__interrupt__"][0].value
             if interrupt_val.get("type") == "auth_required":
+                text = interrupt_val["message"]
                 return {
                     "type": "auth_required",
+                    "response": text,
                     "auth_url": interrupt_val["auth_url"],
-                    "message": interrupt_val["message"]
                 }
         
         msgs = event.get("messages", [])
@@ -103,15 +104,10 @@ async def slack_events(req: Request):
         thread_id=channel_id
     )
 
-    if result["type"] == "response":
+    if result["type"] in ("response", "auth_required"):
         slack_client.chat_postMessage(
             channel=channel_id,
             text=result["response"]
-        )
-    elif result["type"] == "auth_required":
-        slack_client.chat_postMessage(
-            channel=channel_id,
-            text=result["message"]
         )
 
     return {"ok": True}

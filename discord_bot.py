@@ -27,7 +27,7 @@ async def on_message(message):
         }
     ).json()
 
-    if res["type"] == "response":
+    if res["type"] in ("response", "auth_required"):
         await message.channel.send(res["response"])
 
 client.run(os.environ["DISCORD_TOKEN"])
