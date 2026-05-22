@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/userinfo.email",
     "openid",
 ]
