@@ -1,4 +1,5 @@
-import smtplib
+import os
+import resend
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph,START,END
@@ -30,7 +31,7 @@ api = os.getenv("GROQ_API_KEY")
 tavily = os.getenv("TAVILY_API")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 # ==================== LLM =======================
 llm = ChatGroq(
@@ -53,34 +54,16 @@ def send_email_tool(to_email: str, subject: str, body: str) -> str:
     """
 
     try:
-        msg = MIMEMultipart()
-        msg["From"] = SENDER_EMAIL
-        msg["To"] = to_email
-        msg["Subject"] = subject
+        response = resend.Emails.send({
+            "from": "AI Agent <onboarding@resend.dev>",  # default verified sender
+            "to": [to_email],
+            "subject": subject,
+            "text": body,
+        })
 
-        msg.attach(MIMEText(body, "plain"))
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-
-        server.starttls()
-
-        server.login(
-            SENDER_EMAIL,
-            SENDER_PASSWORD
-        )
-
-        server.sendmail(
-            SENDER_EMAIL,
-            to_email,
-            msg.as_string()
-        )
-
-        server.quit()
-
-        return f"Email successfully sent to {to_email}"
+        return f"Email sent successfully to {to_email}. ID: {response.get('id')}"
 
     except Exception as e:
-        print("EMAIL ERROR:", repr(e))
         return f"Failed to send email: {repr(e)}"
     
 tools = [search_and_download_doc_tool, send_email_tool, create_calendar_event_tool]
