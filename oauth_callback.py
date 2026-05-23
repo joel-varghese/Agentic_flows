@@ -40,7 +40,7 @@ def handle_oauth_callback(code: str, state: str) -> dict:
     except Exception as e:
         return {
             "success": False,
-            "user_email": user_email,
+            "user_email": "",
             "message": f"OAuth token exchange failed: {str(e)}",
         }
  
