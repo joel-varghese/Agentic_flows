@@ -30,6 +30,7 @@ api = os.getenv("GROQ_API_KEY")
 tavily = os.getenv("TAVILY_API")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 # ==================== LLM =======================
 llm = ChatGroq(
@@ -50,33 +51,18 @@ def send_email_tool(to_email: str, subject: str, body: str) -> str:
         subject: Email subject
         body: Email body content
     """
-
     try:
-        msg = MIMEMultipart()
-        msg["From"] = SENDER_EMAIL
-        msg["To"] = to_email
-        msg["Subject"] = subject
-
-        msg.attach(MIMEText(body, "plain"))
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-
-        server.starttls()
-
-        server.login(
-            SENDER_EMAIL,
-            SENDER_PASSWORD
+        message = Mail(
+            from_email=SENDER_EMAIL,
+            to_emails=to_email,
+            subject=subject,
+            plain_text_content=body
         )
 
-        server.sendmail(
-            SENDER_EMAIL,
-            to_email,
-            msg.as_string()
-        )
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
 
-        server.quit()
-
-        return f"Email successfully sent to {to_email}"
+        return f"Email sent. Status code: {response.status_code}"
 
     except Exception as e:
         print("EMAIL ERROR:", repr(e))
