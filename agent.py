@@ -1,5 +1,4 @@
-import os
-import resend
+import smtplib
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph,START,END
@@ -31,7 +30,6 @@ api = os.getenv("GROQ_API_KEY")
 tavily = os.getenv("TAVILY_API")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 # ==================== LLM =======================
 llm = ChatGroq(
@@ -45,31 +43,43 @@ llm = ChatGroq(
 @tool
 def send_email_tool(to_email: str, subject: str, body: str) -> str:
     """
-    Sends an email to ANY valid recipient email address.
-
-    IMPORTANT RULES:
-    - There are NO restrictions on recipient emails.
-    - Emails can be sent to external users (not just the sender).
-    - Do NOT assume authentication limits.
-    - This tool is a direct email sending API using Resend.
+    Sends an email to a recipient.
 
     Args:
-        to_email: Recipient email address (any valid email is allowed)
+        to_email: Recipient email address
         subject: Email subject
         body: Email body content
     """
 
     try:
-        response = resend.Emails.send({
-            "from": "AI Agent <onboarding@resend.dev>",  # default verified sender
-            "to": [to_email],
-            "subject": subject,
-            "text": body,
-        })
+        msg = MIMEMultipart()
+        msg["From"] = SENDER_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = subject
 
-        return f"Email sent successfully to {to_email}. ID: {response.get('id')}"
+        msg.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+
+        server.starttls()
+
+        server.login(
+            SENDER_EMAIL,
+            SENDER_PASSWORD
+        )
+
+        server.sendmail(
+            SENDER_EMAIL,
+            to_email,
+            msg.as_string()
+        )
+
+        server.quit()
+
+        return f"Email successfully sent to {to_email}"
 
     except Exception as e:
+        print("EMAIL ERROR:", repr(e))
         return f"Failed to send email: {repr(e)}"
     
 tools = [search_and_download_doc_tool, send_email_tool, create_calendar_event_tool]
@@ -88,23 +98,17 @@ def chatbot(state:State):
     You are an AI assistant with access to tools.
 
     Available tools:
-    1. send_email_tool → sends emails using Resend
-    2. search_and_download_doc_tool → Google Drive search
-    3. create_calendar_event_tool → Google Calendar events
+    1. send_email_tool → Use when the user wants to send an email.
+    2. search_and_download_doc_tool → Use when the user wants to find or download a document from Google Drive.
+    3. create_calendar_event_tool → Use when the user wants to schedule a meeting, send a calendar invite, or create a Google Meet.
 
-    RULES:
-    - Always call tools when needed.
-    - Do NOT respond manually if a tool is required.
-    - After tool execution, summarize results.
-    - NEVER invent tool limitations or restrictions.
-
-    IMPORTANT TOOL RULES:
-    - send_email_tool can send emails to ANY valid email address.
-    - Do NOT assume it is restricted to the authenticated user.
-    - Do NOT fabricate security policies or limitations.
-
-    If unsure, follow the tool schema exactly and trust tool behavior.
-        """),
+    Rules:
+    - Always call the appropriate tool when the request requires action.
+    - Do NOT respond with plain text if an action is required.
+    - After tool execution, summarize the result for the user.
+    - Never invent or fabricate Google OAuth URLs. If authentication is required, the tool
+      result or system interrupt will provide the real sign-in link.
+    """),
         *state["messages"]
     ])
     return {"messages":[response]}
@@ -197,58 +201,3 @@ def run_agent(user_input: str):
         "messages": [HumanMessage(content=user_input)]
     })
     return result["messages"][-1].content
-
-# Start
-# LLM + promt -> Chatbot 
-# 
-# 
-# 
-# External Yools  Tool Node
-# Make a tool Call || Tavily || -><- 
-# 
-# 
-# End 
-# How does chatbot know the when to use tools ?
-# LLM binds with the tools : 
-# Addition function added as tool to the LLM 
-# Doc String is used to know what are thre inputs and arguments : If they match LLM make a call to Tool
-# Instead of relying on its own response.
-# 
-# ReACT agent aplits the query into multiple statements and repeatedly solves query part by part
-# 1. Act
-# 2. Observe
-# 3. Reason
-# #
-# Binding tools with LLMs #
-
-
-
-
-# Stategraph
-
-
-
-# tokenizer = AutoTokenizer.from_pretrained(
-#     base_model,
-#     use_auth_token=api,
-#     cache_dir=local_dir,
-# )
-
-# model = AutoModelForCausalLM.from_pretrained(
-#     base_model,
-#     use_auth_token=api,
-#     torch_dtype=torch.float16,
-#     cache_dir=local_dir,
-#     device_map="auto",
-# )
-
-# hf_pipeline = pipeline(
-#     "text-generation",
-#     model=model,
-#     tokenizer=tokenizer,
-#     max_new_tokens=512,
-#     do_sample=True,
-#     temperature=0.7
-# )
-
-# hf_llm = HuggingFacePipeline(pipeline=hf_pipeline)
