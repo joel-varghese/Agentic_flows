@@ -17,7 +17,7 @@ SCOPES = [
     "openid",
 ]
 
-oauth_pkce_store: dict[str, str] = {}
+
 load_dotenv()
 
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -47,18 +47,16 @@ def get_auth_url(state: str | None = None) -> str:
     Returns the Google OAuth consent-screen URL to redirect the user to.
     `state` can carry any context you want back in the callback (e.g. user_email).
     """
-    user_state = _normalize_state(state or "")
+
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
     flow.redirect_uri = REDIRECT_URI
-    auth_url, returned_state = flow.authorization_url(
+    auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
-        prompt="consent",
-        state=user_state,
+        prompt="select_account",
+        state=state,
     )
-    store_key = _normalize_state(returned_state or user_state)
-    oauth_pkce_store[store_key] = flow.code_verifier
-    print(">>> Stored PKCE verifier for state:", store_key)
+
     return auth_url
 
 
@@ -67,19 +65,9 @@ def exchange_code_for_token(code: str, state: str) -> dict:
     Exchanges an authorization code (from the OAuth callback) for credentials.
     Returns a JSON-serialisable token dict.
     """
-    state_key = _normalize_state(state)
-    code_verifier = oauth_pkce_store.pop(state_key, None)
-    print(">>> Retrieved PKCE verifier for state:", state_key, "found:", bool(code_verifier))
-
-    if not code_verifier:
-        raise ValueError(
-            "No PKCE code verifier found for this sign-in. "
-            "Request a new auth link and complete it on the same server instance."
-        )
 
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
     flow.redirect_uri = REDIRECT_URI
-    flow.code_verifier = code_verifier
     flow.fetch_token(code=code)
     creds = flow.credentials
     return _creds_to_dict(creds)
