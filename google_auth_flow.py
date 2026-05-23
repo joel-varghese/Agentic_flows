@@ -59,8 +59,8 @@ def get_auth_url(user_email: str) -> str:
     
     auth_url, _ = flow.authorization_url(
         access_type="offline",
-        include_granted_scopes="true",
-        prompt="select_account",
+        include_granted_scopes=True,
+        prompt="consent",
         state=state,
     )
 
@@ -87,6 +87,7 @@ def exchange_code_for_token(code: str, state: str) -> dict:
     
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
     flow.redirect_uri = REDIRECT_URI
+    flow.code_verifier = session["code_verifier"]
     flow.fetch_token(code=code)
     creds = flow.credentials
 
