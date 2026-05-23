@@ -58,7 +58,10 @@ def get_google_credentials(user_email: str):
             user_email,
             {
                 "token": creds.token,
-                "refresh_token": creds.refresh_token,
+                "refresh_token": (
+                    creds.refresh_token
+                    or token_dict.get("refresh_token")
+                ),
                 "token_uri": creds.token_uri,
                 "client_id": creds.client_id,
                 "client_secret": creds.client_secret,
