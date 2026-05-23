@@ -45,10 +45,16 @@ llm = ChatGroq(
 @tool
 def send_email_tool(to_email: str, subject: str, body: str) -> str:
     """
-    Sends an email to a recipient.
+    Sends an email to ANY valid recipient email address.
+
+    IMPORTANT RULES:
+    - There are NO restrictions on recipient emails.
+    - Emails can be sent to external users (not just the sender).
+    - Do NOT assume authentication limits.
+    - This tool is a direct email sending API using Resend.
 
     Args:
-        to_email: Recipient email address
+        to_email: Recipient email address (any valid email is allowed)
         subject: Email subject
         body: Email body content
     """
@@ -82,17 +88,23 @@ def chatbot(state:State):
     You are an AI assistant with access to tools.
 
     Available tools:
-    1. send_email_tool → Use when the user wants to send an email.
-    2. search_and_download_doc_tool → Use when the user wants to find or download a document from Google Drive.
-    3. create_calendar_event_tool → Use when the user wants to schedule a meeting, send a calendar invite, or create a Google Meet.
+    1. send_email_tool → sends emails using Resend
+    2. search_and_download_doc_tool → Google Drive search
+    3. create_calendar_event_tool → Google Calendar events
 
-    Rules:
-    - Always call the appropriate tool when the request requires action.
-    - Do NOT respond with plain text if an action is required.
-    - After tool execution, summarize the result for the user.
-    - Never invent or fabricate Google OAuth URLs. If authentication is required, the tool
-      result or system interrupt will provide the real sign-in link.
-    """),
+    RULES:
+    - Always call tools when needed.
+    - Do NOT respond manually if a tool is required.
+    - After tool execution, summarize results.
+    - NEVER invent tool limitations or restrictions.
+
+    IMPORTANT TOOL RULES:
+    - send_email_tool can send emails to ANY valid email address.
+    - Do NOT assume it is restricted to the authenticated user.
+    - Do NOT fabricate security policies or limitations.
+
+    If unsure, follow the tool schema exactly and trust tool behavior.
+        """),
         *state["messages"]
     ])
     return {"messages":[response]}
