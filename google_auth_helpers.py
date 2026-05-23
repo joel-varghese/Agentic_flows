@@ -34,7 +34,7 @@ def auth_required_message(
             delete_token(user_email)
         except Exception:
             pass
-    auth_url = get_auth_url(state=user_email)
+    auth_url = get_auth_url(user_email)
     return (
         f"{AUTH_REQUIRED_PREFIX}{auth_url}\n"
         f"User {user_email} must sign in to grant {product} access. "

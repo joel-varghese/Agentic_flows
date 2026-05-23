@@ -1,6 +1,7 @@
 import os
 from urllib.parse import unquote
-
+import secrets
+import time
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
@@ -8,6 +9,9 @@ from dotenv import load_dotenv
 
 # Google may grant extra scopes (e.g. userinfo.profile with openid); relax strict checks.
 os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
+oauth_session_store = {}
+
+SESSION_TTL_SECONDS = 600
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
@@ -42,7 +46,7 @@ def _client_config() -> dict:
     }
 
 
-def get_auth_url(state: str | None = None) -> str:
+def get_auth_url(user_email: str) -> str:
     """
     Returns the Google OAuth consent-screen URL to redirect the user to.
     `state` can carry any context you want back in the callback (e.g. user_email).
@@ -50,12 +54,21 @@ def get_auth_url(state: str | None = None) -> str:
 
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
     flow.redirect_uri = REDIRECT_URI
+
+    state = secrets.token_urlsafe(32)
+    
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         prompt="select_account",
         state=state,
     )
+
+    oauth_session_store[state] = {
+        "user_email": user_email,
+        "code_verifier": flow.code_verifier,
+        "created_at": time.time()
+    }
 
     return auth_url
 
@@ -66,11 +79,24 @@ def exchange_code_for_token(code: str, state: str) -> dict:
     Returns a JSON-serialisable token dict.
     """
 
+    session = oauth_session_store.get(state)
+
+    if not session:
+        raise Exception("OAuth session expired or invalid state.")
+
+    
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
     flow.redirect_uri = REDIRECT_URI
     flow.fetch_token(code=code)
     creds = flow.credentials
-    return _creds_to_dict(creds)
+
+    user_email = session["user_email"]
+    del oauth_session_store[state]
+
+    return {
+        "user_email": user_email,
+        "token_dict": _creds_to_dict(creds)
+    }
 
 
 def credentials_from_token_dict(token_dict: dict) -> Credentials:
