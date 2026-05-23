@@ -16,6 +16,8 @@ from langgraph.types import Command, interrupt
 from google_auth_helpers import AUTH_REQUIRED_PREFIX
 from drive_tools import search_and_download_doc_tool
 from calendar_tools import create_calendar_event_tool
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import os
 
 
@@ -51,19 +53,35 @@ def send_email_tool(to_email: str, subject: str, body: str) -> str:
     """
 
     try:
-        message = Mail(
-            from_email=SENDER_EMAIL,
-            to_emails=to_email,
-            subject=subject,
-            plain_text_content=body,
+        msg = MIMEMultipart()
+        msg["From"] = SENDER_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = subject
+
+        msg.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+
+        server.starttls()
+
+        server.login(
+            SENDER_EMAIL,
+            SENDER_PASSWORD
         )
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        sg.send(message)
+
+        server.sendmail(
+            SENDER_EMAIL,
+            to_email,
+            msg.as_string()
+        )
+
+        server.quit()
 
         return f"Email successfully sent to {to_email}"
 
     except Exception as e:
-        return f"Failed to send email: {str(e)}"
+        print("EMAIL ERROR:", repr(e))
+        return f"Failed to send email: {repr(e)}"
     
 tools = [search_and_download_doc_tool, send_email_tool, create_calendar_event_tool]
 llm_with_tools = llm.bind_tools(tools)
