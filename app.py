@@ -148,7 +148,7 @@ async def oauth_callback(code: str = "", state: str = ""):
         "message": result["message"]
     }
  
-@app.get(f"/history/{user_id}")
+@app.get("/history/{user_id}")
 def get_history(user_id: str):
     history = load_history(user_id)
 
