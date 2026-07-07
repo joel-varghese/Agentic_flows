@@ -1,3 +1,4 @@
+from json import load
 import gradio as gr
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
@@ -5,6 +6,7 @@ from slack_sdk import WebClient
 from agent import graph
 from oauth_callback import handle_oauth_callback
 from fastapi.middleware.cors import CORSMiddleware
+from chat_store import save_message, load_history
 import os
 
 
@@ -25,6 +27,20 @@ app.add_middleware(
 def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = None):
     thread_key = thread_id or f"{channel}:{user_id}"
 
+    history = load_history(user_id)
+
+    save_message(
+        user_id=user_id,
+        role="user",
+        content=message
+    )
+
+    messages = history + [
+        {
+            "role": "user",
+            "content": message
+        }
+    ]
     config = {
         "configurable": {
             "thread_id": thread_key
@@ -32,7 +48,7 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
     }
 
     events = graph.stream(
-        {"messages": [{"role": "user", "content": message}]},
+        {"messages": messages},
         config=config,
         stream_mode="values",
     )
@@ -56,6 +72,11 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
                 last_ai_text = msg.content
                 break
 
+    save_message(
+        user_id=user_id,
+        role="assistant",
+        content=last_ai_text
+    )
     return {"type": "response", "response": last_ai_text or "Done."}
 
 class ChatRequest(BaseModel):
@@ -127,3 +148,8 @@ async def oauth_callback(code: str = "", state: str = ""):
         "message": result["message"]
     }
  
+@app.get(f"/history/{user_id}")
+def get_history(user_id: str):
+    history = load_history(user_id)
+
+    return history
