@@ -3,6 +3,7 @@ import os
 from langchain_core.tools import tool
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
 
 from google_auth_helpers import (
@@ -20,7 +21,21 @@ def _drive_service(user_email: str):
     Returns (Drive service, auth_message).
     auth_message is set when the user must re-authenticate.
     """
-    creds, auth_msg = get_google_credentials(user_email)
+    try:
+        creds, auth_msg = get_google_credentials(user_email)
+
+    except RefreshError as e:
+        print(
+            f"Unexpected Google refresh failure for {user_email}: "
+            f"{repr(e)}"
+        )
+
+        return None, auth_required_message(
+            user_email,
+            "Google Drive",
+            revoke=True
+        )
+    
     if auth_msg:
         return None, auth_msg
     if creds is None:

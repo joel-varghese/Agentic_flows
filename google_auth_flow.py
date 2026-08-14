@@ -5,6 +5,7 @@ import time
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from dotenv import load_dotenv
 
 # Google may grant extra scopes (e.g. userinfo.profile with openid); relax strict checks.
@@ -114,7 +115,11 @@ def credentials_from_token_dict(token_dict: dict) -> Credentials:
         scopes=token_dict.get("scopes", SCOPES),
     )
     if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+        try:
+            creds.refresh(Request())
+        except RefreshError:
+            print("Google refresh token is invalid or revoked.")
+            raise
     return creds
 
 
