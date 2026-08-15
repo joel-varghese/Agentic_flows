@@ -104,7 +104,26 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
 
     try:
         files = _search_files(service, query)
+
+    except RefreshError as e:
+        print(
+            f"[DRIVE AUTH] RefreshError while searching Drive "
+            f"for {user_email}: {repr(e)}"
+        )
+
+        return auth_required_message(
+            user_email,
+            "Google Drive",
+            revoke=True,
+        )
+
+    
     except HttpError as e:
+
+        print(
+            f"[DRIVE] HttpError while searching Drive "
+            f"for {user_email}: {repr(e)}"
+        )
         if is_auth_failure(e):
             return auth_required_message(user_email, "Google Drive", revoke=True)
         return f"Drive search failed: {e}"
@@ -131,9 +150,31 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
             f"View online: {view_link}"
             f"{other_str}"
         )
+
+    except RefreshError as e:
+        print(
+            f"[DRIVE AUTH] RefreshError while downloading "
+            f"{file_name} for {user_email}: {repr(e)}"
+        )
+
+        return auth_required_message(
+            user_email,
+            "Google Drive",
+            revoke=True,
+        )
     except HttpError as e:
+        print(
+            f"[DRIVE] HttpError while downloading "
+            f"{file_name} for {user_email}: {repr(e)}"
+        )
+
         if is_auth_failure(e):
-            return auth_required_message(user_email, "Google Drive", revoke=True)
+            return auth_required_message(
+                user_email,
+                "Google Drive",
+                revoke=True,
+            )
+
         return (
             f"Found '{file_name}' on Drive but download failed: {e}\n"
             f"View online: {view_link}"
