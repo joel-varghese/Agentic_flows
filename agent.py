@@ -1,4 +1,3 @@
-import smtplib
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph,START,END
@@ -12,8 +11,6 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, Tool
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.types import Command, interrupt
-from google_auth_helpers import AUTH_REQUIRED_PREFIX
 from drive_tools import search_and_download_doc_tool
 from calendar_tools import create_calendar_event_tool
 from email.mime.text import MIMEText
@@ -107,9 +104,12 @@ _AUTH_PRODUCT_LABELS = {
 
 def handle_tools(state: State):
     """
-    Custom tool-execution node that intercepts AUTH_REQUIRED:: sentinels
-    from Google tools and surfaces them via LangGraph interrupt.
+    Execute tool calls.
+
+    Google authentication is handled inside the individual Google tools
+    using LangGraph interrupt().
     """
+
     last_message: AIMessage = state["messages"][-1]
 
     results = []
@@ -121,27 +121,6 @@ def handle_tools(state: State):
             result_content = f"Unknown tool: {tool_call['name']}"
         else:
             result_content = matched_tool.invoke(tool_call["args"])
-
-        if isinstance(result_content, str) and result_content.startswith(AUTH_REQUIRED_PREFIX):
-            first_line = result_content.split("\n")[0]
-            auth_url = first_line.removeprefix(AUTH_REQUIRED_PREFIX).strip()
-            product = _AUTH_PRODUCT_LABELS.get(
-                tool_call["name"], "Google (Drive & Calendar)"
-            )
-
-            interrupt({
-                "type": "auth_required",
-                "auth_url": auth_url,
-                "message": (
-                    f"🔐 {product} access is required. "
-                    "Please authenticate by visiting the link below, then retry your request.\n\n"
-                    f"👉 {auth_url}"
-                ),
-            })
-            result_content = (
-                "Authentication flow initiated. Once you have completed Google sign-in, "
-                "please repeat your request."
-            )
 
         results.append(
             ToolMessage(
@@ -182,8 +161,8 @@ graph=graph_builder.compile(checkpointer=memory)
 
 # ==================== ENTRY FUNCTION =======================
 
-def run_agent(user_input: str):
-    result = graph.invoke({
-        "messages": [HumanMessage(content=user_input)]
-    })
-    return result["messages"][-1].content
+# def run_agent(user_input: str):
+#     result = graph.invoke({
+#         "messages": [HumanMessage(content=user_input)]
+#     })
+#     return result["messages"][-1].content

@@ -57,20 +57,26 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
 
     for event in events:
         if "__interrupt__" in event:
-            interrupt_val = event["__interrupt__"][0].value
-            if interrupt_val.get("type") == "auth_required":
-                text = interrupt_val["message"]
-
+            interrupt_obj = event["__interrupt__"][0]
+            auth_info = interrupt_obj.value
+            if auth_info.get("type") == "auth_required":
+                
                 save_message(
                     user_id=user_id,
                     role="assistant",
-                    content=text,
+                    content=auth_info["message"],
                 )
 
                 return {
                     "type": "auth_required",
-                    "response": text,
-                    "auth_url": interrupt_val["auth_url"],
+                    "response": auth_info["message"],
+                    "auth": {
+                        "provider": auth_info["provider"],
+                        "service": auth_info["service"],
+                        "user_email": auth_info["user_email"],
+                        "auth_url": auth_info["auth_url"],
+                    },
+                    "thread_id": thread_key,
                 }
         
         msgs = event.get("messages", [])
@@ -78,6 +84,12 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
             if hasattr(msg, "content") and msg.type == "ai" and not msg.tool_calls:
                 last_ai_text = msg.content
                 break
+
+    save_message(
+        user_id=user_id,
+        role="assistant",
+        content=last_ai_text
+    )
 
     return {"type": "response", "response": last_ai_text or "Done."}
 
