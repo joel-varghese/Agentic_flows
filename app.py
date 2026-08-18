@@ -60,6 +60,13 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
             interrupt_val = event["__interrupt__"][0].value
             if interrupt_val.get("type") == "auth_required":
                 text = interrupt_val["message"]
+
+                save_message(
+                    user_id=user_id,
+                    role="assistant",
+                    content=text,
+                )
+
                 return {
                     "type": "auth_required",
                     "response": text,
@@ -72,11 +79,6 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
                 last_ai_text = msg.content
                 break
 
-    save_message(
-        user_id=user_id,
-        role="assistant",
-        content=last_ai_text
-    )
     return {"type": "response", "response": last_ai_text or "Done."}
 
 class ChatRequest(BaseModel):
