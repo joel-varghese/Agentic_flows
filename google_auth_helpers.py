@@ -6,7 +6,6 @@ from googleapiclient.errors import HttpError
 from google_auth_flow import credentials_from_token_dict, get_auth_url
 from token_store import delete_token, get_token, save_token
 
-AUTH_REQUIRED_PREFIX = "AUTH_REQUIRED::"
 
 
 def is_auth_failure(exc: BaseException) -> bool:
@@ -23,34 +22,51 @@ def is_auth_failure(exc: BaseException) -> bool:
     return False
 
 
-def auth_required_message(
+def build_auth_required(
     user_email: str,
-    product: str = "Google",
+    service: str = "Google Drive",
     *,
     revoke: bool = False,
-) -> str:
+) -> dict:
     if revoke:
         try:
             delete_token(user_email)
         except Exception:
             pass
     auth_url = get_auth_url(user_email)
-    return (
-        f"{AUTH_REQUIRED_PREFIX}{auth_url}\n"
-        f"User {user_email} must sign in to grant {product} access. "
-        f"Visit the URL above, then retry the request."
-    )
+
+    return {
+        "type": "auth_required",
+        "provider": "google",
+        "service": service,
+        "user_email": user_email,
+        "auth_url": auth_url,
+        "message": (
+            f"{service} authentication is required. "
+            "Please connect your Google account, then retry your request."
+        ),
+    }
 
 
 def get_google_credentials(user_email: str):
     """
-    Load and refresh stored credentials.
-    Returns (credentials, None) on success, (None, None) if no token,
-    or (None, auth_required_message) when re-authentication is needed.
+    Returns:
+
+        (credentials, None)
+            when credentials are valid
+
+        (None, None)
+            when no token exists
+
+        (None, auth_payload)
+            when the user needs OAuth
     """
     token_dict = get_token(user_email)
     if not token_dict:
-        return None, None
+        return None, build_auth_required(
+            user_email,
+            "Google Drive",
+        )
 
     try:
         creds = credentials_from_token_dict(token_dict)
@@ -66,11 +82,24 @@ def get_google_credentials(user_email: str):
                 "client_id": creds.client_id,
                 "client_secret": creds.client_secret,
                 "scopes": list(creds.scopes or []),
-                "expiry": creds.expiry.isoformat() if creds.expiry else None,
+                "expiry": (
+                    creds.expiry.isoformat() 
+                    if creds.expiry 
+                    else None,
+                ),
             },
         )
         return creds, None
     except Exception as e:
+
         if is_auth_failure(e):
-            return None, auth_required_message(user_email, "Google", revoke=True)
+            print(
+                f"[AUTH] Google authentication failed for "
+                f"{user_email}: {repr(e)}"
+            )
+            return None, build_auth_required(
+                user_email, 
+                "Google Drive",
+                revoke=True
+            )
         raise

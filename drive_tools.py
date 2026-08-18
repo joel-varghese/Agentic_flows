@@ -1,14 +1,14 @@
 import io
 import os
 from langchain_core.tools import tool
+from langgraph.types import interrupt
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
 
 from google_auth_helpers import (
-    AUTH_REQUIRED_PREFIX,
-    auth_required_message,
+    build_auth_required,
     get_google_credentials,
     is_auth_failure,
 )
@@ -18,30 +18,30 @@ DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "/tmp/drive_downloads")
 
 def _drive_service(user_email: str):
     """
-    Returns (Drive service, auth_message).
-    auth_message is set when the user must re-authenticate.
+    Returns an authenticated Google Drive service.
+
+    If authentication is required, pauses the LangGraph execution
+    using interrupt().
     """
-    try:
-        creds, auth_msg = get_google_credentials(user_email)
 
-    except RefreshError as e:
-        print(
-            f"Unexpected Google refresh failure for {user_email}: "
-            f"{repr(e)}"
-        )
+    creds, auth_info = get_google_credentials(user_email)
 
-        return None, auth_required_message(
+    if auth_info:
+        interrupt(auth_info)
+
+    if creds is None:
+        auth_info = build_auth_required(
             user_email,
             "Google Drive",
-            revoke=True
         )
-    
-    if auth_msg:
-        return None, auth_msg
-    if creds is None:
-        return None, auth_required_message(user_email, "Google Drive")
 
-    return build("drive", "v3", credentials=creds), None
+        interrupt(auth_info)
+
+    return build(
+        "drive", 
+        "v3", 
+        credentials=creds
+        )
 
 
 def _search_files(service, query: str, max_results: int = 5) -> list[dict]:
@@ -98,9 +98,7 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
     Searches Google Drive and downloads a document by name.
     """
 
-    service, auth_msg = _drive_service(user_email)
-    if auth_msg:
-        return auth_msg
+    service = _drive_service(user_email)
 
     try:
         files = _search_files(service, query)
@@ -111,12 +109,13 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
             f"for {user_email}: {repr(e)}"
         )
 
-        return auth_required_message(
+        auth_info = build_auth_required(
             user_email,
             "Google Drive",
-            revoke=True,
+            revoke=True
         )
 
+        interrupt(auth_info)
     
     except HttpError as e:
 
@@ -125,11 +124,21 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
             f"for {user_email}: {repr(e)}"
         )
         if is_auth_failure(e):
-            return auth_required_message(user_email, "Google Drive", revoke=True)
+            auth_info = build_auth_required(
+                user_email,
+                "Google Drive",
+                revoke=True,
+            )
+
+            interrupt(auth_info)
+
         return f"Drive search failed: {e}"
 
     if not files:
-        return f"No files found on Google Drive matching '{query}'."
+        return (
+            f"No files found on Google Drive "
+            f"matching '{query}'."
+        )
 
     best = files[0]
     file_id = best["id"]
@@ -137,13 +146,25 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
     mime_type = best["mimeType"]
     view_link = best.get("webViewLink", "N/A")
 
-    other_matches = [f["name"] for f in files[1:]]
-    other_str = (
-        f"\n\nOther matches: {', '.join(other_matches)}" if other_matches else ""
-    )
+    other_matches = [
+        f["name"] 
+        for f in files[1:]
+    ]
+
+    other_str = [
+        f"\n\nOther matches: {', '.join(other_matches)}" 
+        if other_matches 
+        else ""
+    ]
 
     try:
-        local_path = _download_file(service, file_id, file_name, mime_type)
+        local_path = _download_file(
+            service, 
+            file_id, 
+            file_name, 
+            mime_type
+        )
+
         return (
             f"✅ Found and downloaded '{file_name}'.\n"
             f"Saved to: {local_path}\n"
@@ -157,11 +178,14 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
             f"{file_name} for {user_email}: {repr(e)}"
         )
 
-        return auth_required_message(
-            user_email,
-            "Google Drive",
-            revoke=True,
+        interrupt(
+            build_auth_required(
+                user_email,
+                "Google Drive",
+                revoke=True
+            )
         )
+
     except HttpError as e:
         print(
             f"[DRIVE] HttpError while downloading "
@@ -169,13 +193,16 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
         )
 
         if is_auth_failure(e):
-            return auth_required_message(
-                user_email,
-                "Google Drive",
-                revoke=True,
+            interrupt(
+                build_auth_required(
+                    user_email,
+                    "Google Drive",
+                    revoke=True
+                )
             )
 
         return (
-            f"Found '{file_name}' on Drive but download failed: {e}\n"
+            f"Found '{file_name}' on Drive but "
+            f"download failed: {e}\n"
             f"View online: {view_link}"
         )
