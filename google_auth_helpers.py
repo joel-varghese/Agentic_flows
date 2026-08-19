@@ -2,6 +2,7 @@
 
 from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
+from langgraph.types import interrupt
 
 from google_auth_flow import credentials_from_token_dict, get_auth_url
 from token_store import delete_token, get_token, save_token
@@ -103,3 +104,18 @@ def get_google_credentials(user_email: str):
                 revoke=True
             )
         raise
+
+def auth_required_interrupt(
+    user_email: str,
+    service: str,
+):
+    auth_url = get_auth_url(user_email)
+
+    interrupt({
+        "type": "auth_required",
+        "provider": "google",
+        "service": service,
+        "user_email": user_email,
+        "auth_url": auth_url,
+        "message": f"{service} access is required.",
+    })

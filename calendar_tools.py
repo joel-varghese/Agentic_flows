@@ -1,27 +1,33 @@
 from langchain_core.tools import tool
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from langgraph.types import interrupt
 
 from datetime import datetime, timedelta
 import uuid
 
 from google_auth_helpers import (
-    auth_required_message,
     get_google_credentials,
     is_auth_failure,
+    auth_required_interrupt
 )
 
 
 def _calendar_service(user_email: str):
     """
-    Returns (Calendar service, auth_message).
-    auth_message is set when the user must re-authenticate.
+    Returns a Google Calendar service.
+
+    If authentication is required, pauses the LangGraph execution
+    using interrupt().
     """
     creds, auth_msg = get_google_credentials(user_email)
     if auth_msg:
-        return None, auth_msg
+        interrupt(auth_msg)
     if creds is None:
-        return None, auth_required_message(user_email, "Google Calendar")
+        auth_required_interrupt(
+            user_email,
+            "Google Calendar",
+        )
 
     return build("calendar", "v3", credentials=creds), None
 
@@ -52,9 +58,7 @@ def create_calendar_event_tool(
             Example: America/New_York
     """
 
-    service, auth_msg = _calendar_service(user_email)
-    if auth_msg:
-        return auth_msg
+    service = _calendar_service(user_email)
 
     try:
         start_dt = datetime.fromisoformat(start_time)
@@ -112,11 +116,40 @@ def create_calendar_event_tool(
         )
 
     except HttpError as e:
+
+        print(
+            f"[CALENDAR] HttpError for {user_email}: "
+            f"{repr(e)}"
+        )
+                
         if is_auth_failure(e):
-            return auth_required_message(user_email, "Google Calendar", revoke=True)
-        return f"Google Calendar API error: {str(e)}"
+            _, auth_info = get_google_credentials(user_email)
+
+            if auth_info:
+                interrupt(auth_info)
+
+            auth_required_interrupt(
+                user_email,
+                "Google Calendar"
+            )
+
+            return f"Google Calendar API error: {str(e)}"
 
     except Exception as e:
         if is_auth_failure(e):
-            return auth_required_message(user_email, "Google Calendar", revoke=True)
-        return f"Failed to create calendar invite: {str(e)}"
+            _, auth_info = get_google_credentials(
+                user_email
+            )
+
+            if auth_info:
+                interrupt(auth_info)
+
+            auth_required_interrupt(
+                user_email,
+                "Google Calendar",
+            )
+
+        return (
+            f"Failed to create calendar invite: "
+            f"{str(e)}"
+        )
