@@ -1,5 +1,4 @@
-from json import load
-import gradio as gr
+import uuid
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from slack_sdk import WebClient
@@ -25,9 +24,12 @@ app.add_middleware(
 
 # Reusable agent runner
 def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = None):
-    thread_key = thread_id or f"{channel}:{user_id}"
+    # thread_key = thread_id or f"{channel}:{user_id}"
 
-    history = load_history(user_id)
+    # history = load_history(user_id)
+
+
+    thread_key = thread_id or str(uuid.uuid4())
 
     save_message(
         user_id=user_id,
@@ -35,12 +37,14 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
         content=message
     )
 
-    messages = history + [
+    messages = [
         {
             "role": "user",
             "content": message
         }
     ]
+
+
     config = {
         "configurable": {
             "thread_id": thread_key
@@ -60,7 +64,13 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
             interrupt_obj = event["__interrupt__"][0]
             auth_info = interrupt_obj.value
             if auth_info.get("type") == "auth_required":
-                
+
+
+                auth_message = auth_info.get(
+                    "message",
+                    "Authentication is required."
+                )
+
                 save_message(
                     user_id=user_id,
                     role="assistant",
@@ -69,11 +79,21 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
 
                 return {
                     "type": "auth_required",
-                    "response": auth_info["message"],
+                    "status": "interrupted",
+                    "response": auth_message,
                     "auth": {
-                        "provider": auth_info["provider"],
-                        "service": auth_info["service"],
-                        "user_email": auth_info["user_email"],
+                        "provider": auth_info.get(
+                            "provider",
+                            "google"
+                        ),
+                        "service": auth_info.get(
+                            "service",
+                            "Google"
+                        ),
+                        "user_email": auth_info.get(
+                            "user_email",
+                            ""
+                        ),
                         "auth_url": auth_info["auth_url"],
                     },
                     "thread_id": thread_key,
@@ -91,7 +111,12 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
         content=last_ai_text
     )
 
-    return {"type": "response", "response": last_ai_text or "Done."}
+    return {
+        "type": "response",
+        "status": "completed",
+        "response": last_ai_text or "Done.",
+        "thread_id": thread_key,
+    }
 
 class ChatRequest(BaseModel):
     message: str
@@ -167,3 +192,40 @@ def get_history(user_id: str):
     history = load_history(user_id)
 
     return history
+
+
+
+
+
+#      ┌─────────────────────┐
+#      │     User message    │
+#      └──────────┬──────────┘
+#                 ↓
+#         new/current thread
+#                 ↓
+#            LangGraph
+#                 ↓
+#      ┌──────────┴──────────┐
+#      │                     │
+#  normal                 OAuth
+#      │                     │
+#      ↓                     ↓
+#  response              interrupt
+#                            │
+#                            ↓
+#                   frontend auth card
+#                            │
+#                            ↓
+#                     Google OAuth
+#                            │
+#                            ↓
+#                     save token
+#                            │
+#                            ↓
+#                   abandon old thread
+#                            │
+#                            ↓
+#                  generate new thread
+#                            │
+#                            ↓
+#                user sends next request
