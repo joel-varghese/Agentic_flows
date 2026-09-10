@@ -52,10 +52,14 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
     }
 
     events = graph.stream(
-        {"messages": messages},
+        {
+            "messages": messages,
+            "user_id": user_id,
+        },
         config=config,
         stream_mode="values",
     )
+
 
     last_ai_text = ""
 
@@ -181,6 +185,10 @@ async def oauth_callback(code: str = "", state: str = ""):
         return {
             "status": "success",
             "message": result["message"],
+            "user_id": result["user_id"],
+            "thread_id": result.get(
+                "thread_id"
+            ),
         }
     return {
         "status": "error",

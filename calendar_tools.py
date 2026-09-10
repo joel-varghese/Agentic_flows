@@ -34,6 +34,7 @@ def _calendar_service(user_email: str):
 
 @tool
 def create_calendar_event_tool(
+    user_id: str,
     user_email: str,
     attendee_email: str,
     title: str,

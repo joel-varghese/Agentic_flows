@@ -16,7 +16,10 @@ from google_auth_helpers import (
 DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "/tmp/drive_downloads")
 
 
-def _drive_service(user_email: str):
+def _drive_service(
+    user_id: str,
+    thread_id: str | None = None,
+):
     """
     Returns an authenticated Google Drive service.
 
@@ -24,18 +27,24 @@ def _drive_service(user_email: str):
     using interrupt().
     """
 
-    creds, auth_info = get_google_credentials(user_email)
+    creds, auth_info = get_google_credentials(
+        user_id=user_id,
+        thread_id=thread_id,
+        service="Google Drive",
+    )
 
     if auth_info:
         interrupt(auth_info)
 
     if creds is None:
-        auth_info = build_auth_required(
-            user_email,
-            "Google Drive",
+        interrupt(
+            build_auth_required(
+                user_id=user_id,
+                service="Google Drive",
+                thread_id=thread_id,
+            )
         )
 
-        interrupt(auth_info)
 
     return build(
         "drive", 
@@ -93,12 +102,14 @@ def _download_file(service, file_id: str, file_name: str, mime_type: str) -> str
 
 
 @tool
-def search_and_download_doc_tool(user_email: str, query: str) -> str:
+def search_and_download_doc_tool(
+    user_id: str,
+    query: str) -> str:
     """
     Searches Google Drive and downloads a document by name.
     """
 
-    service = _drive_service(user_email)
+    service = _drive_service(user_id)
 
     try:
         files = _search_files(service, query)
@@ -106,13 +117,12 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
     except RefreshError as e:
         print(
             f"[DRIVE AUTH] RefreshError while searching Drive "
-            f"for {user_email}: {repr(e)}"
+            f"for {user_id}: {repr(e)}"
         )
 
         auth_info = build_auth_required(
-            user_email,
-            "Google Drive",
-            revoke=True
+            user_id=user_id,
+            service="Google Drive"
         )
 
         interrupt(auth_info)
@@ -121,13 +131,12 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
 
         print(
             f"[DRIVE] HttpError while searching Drive "
-            f"for {user_email}: {repr(e)}"
+            f"for {user_id}: {repr(e)}"
         )
         if is_auth_failure(e):
             auth_info = build_auth_required(
-                user_email,
-                "Google Drive",
-                revoke=True,
+                user_id=user_id,
+                service="Google Drive"
             )
 
             interrupt(auth_info)
@@ -175,29 +184,27 @@ def search_and_download_doc_tool(user_email: str, query: str) -> str:
     except RefreshError as e:
         print(
             f"[DRIVE AUTH] RefreshError while downloading "
-            f"{file_name} for {user_email}: {repr(e)}"
+            f"{file_name} for {user_id}: {repr(e)}"
         )
 
         interrupt(
             build_auth_required(
-                user_email,
-                "Google Drive",
-                revoke=True
+                user_id=user_id,
+                service="Google Drive",
             )
         )
 
     except HttpError as e:
         print(
             f"[DRIVE] HttpError while downloading "
-            f"{file_name} for {user_email}: {repr(e)}"
+            f"{file_name} for {user_id}: {repr(e)}"
         )
 
         if is_auth_failure(e):
             interrupt(
                 build_auth_required(
-                    user_email,
-                    "Google Drive",
-                    revoke=True
+                    user_id=user_id,
+                    service="Google Drive"
                 )
             )
 

@@ -1,46 +1,79 @@
-"""Handles the google OAuth 2.0 redirect callback"""
+"""
+Handles Google OAuth 2.0 redirect callback.
+"""
 
-from google_auth_flow import exchange_code_for_token
+from google_auth_flow import (
+    exchange_code_for_token,
+)
+
 from token_store import save_token
 
-def handle_oauth_callback(code: str, state: str) -> dict:
-    """
-    Exchanges the OAuth authorization code for tokens and persists them.
- 
-    Args:
-        code:  The `code` query parameter from the callback URL.
-        state: The `state` parameter — we use it to carry the user's email.
- 
-    Returns:
-        A dict with keys:
-          - success (bool)
-          - user_email (str)
-          - message (str)
-    """ # we set state=user_email when building the auth URL
- 
+
+def handle_oauth_callback(
+    code: str,
+    state: str,
+) -> dict:
+
     if not code:
-        return {"success": False, "user_email": "", "message": "No authorization code received."}
-    if not state:
-        return {"success": False, "user_email": "", "message": "No user email in OAuth state parameter."}
- 
-    # The instance where this would fail is when a user has mutiple auth flows created or
-    # if there are multiple workers involved
-    try:
-        result = exchange_code_for_token(code, state)
 
-        user_email = result["user_email"]
-        token_dict = result["token_dict"]
-
-        save_token(user_email, token_dict)
-        return {
-            "success": True,
-            "user_email": user_email,
-            "message": f"✅ Google access granted and token saved for {user_email}. You can retry your request.",
-        }
-    except Exception as e:
         return {
             "success": False,
-            "user_email": "",
-            "message": f"OAuth token exchange failed: {str(e)}",
+            "user_id": "",
+            "message": (
+                "No authorization code received."
+            ),
         }
- 
+
+    if not state:
+
+        return {
+            "success": False,
+            "user_id": "",
+            "message": (
+                "No OAuth state received."
+            ),
+        }
+
+    try:
+
+        result = exchange_code_for_token(
+            code=code,
+            state=state,
+        )
+
+        user_id = result["user_id"]
+
+        token_dict = result["token_dict"]
+
+        save_token(
+            user_id=user_id,
+            token_dict=token_dict,
+        )
+
+        return {
+            "success": True,
+            "user_id": user_id,
+            "thread_id": result.get(
+                "thread_id"
+            ),
+            "message": (
+                "Google access granted. "
+                "You can continue your request."
+            ),
+        }
+
+    except Exception as e:
+
+        print(
+            f"[OAUTH CALLBACK] "
+            f"{repr(e)}"
+        )
+
+        return {
+            "success": False,
+            "user_id": "",
+            "message": (
+                f"OAuth token exchange failed: "
+                f"{str(e)}"
+            ),
+        }
