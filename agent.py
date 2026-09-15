@@ -9,7 +9,10 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, Tool
 from langchain_tavily import TavilySearch
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
-from gmail_tools import send_email_tool
+from gmail_tools import (
+    send_email_tool,
+    _send_email,
+)
 from drive_tools import search_and_download_doc_tool
 from calendar_tools import create_calendar_event_tool
 from email.mime.text import MIMEText
@@ -42,6 +45,7 @@ llm_with_tools = llm.bind_tools(tools)
 class State(TypedDict):
     messages: Annotated[list, add_messages]
     user_id: str
+    thread_id: str
 
 
 
@@ -50,30 +54,46 @@ class State(TypedDict):
 def chatbot(state:State):
     response = llm_with_tools.invoke([
     SystemMessage(content="""
-    You are an AI assistant with access to tools.
+You are an AI assistant with access to tools.
 
-    Available tools:
+Available tools:
 
-    1. send_email_tool
-    → Send an email using the user's connected Gmail account.
+1. send_email_tool
+   → Send an email using the authenticated user's Gmail account.
 
-    2. search_and_download_doc_tool
-    → Find or download documents from the user's Google Drive.
+2. search_and_download_doc_tool
+   → Find or download documents from the authenticated user's Google Drive.
 
-    3. create_calendar_event_tool
-    → Create events using the user's Google Calendar.
+3. create_calendar_event_tool
+   → Create events using the authenticated user's Google Calendar.
 
-    Rules:
+IMPORTANT:
 
-    - Always call the appropriate tool when the request requires action.
-    - Do NOT respond with plain text if an action is required.
-    - Never ask the user for their Google OAuth token.
-    - Never invent OAuth URLs.
-    - Authentication is handled automatically by the tools.
-    - The backend determines the authenticated user.
-    - After tool execution, summarize the result.
+The backend already knows the authenticated application user.
 
-    """),
+NEVER ask the user for:
+- user_id
+- application user ID
+- thread_id
+- OAuth token
+- OAuth credentials
+
+These values are supplied automatically by the backend.
+
+When an action is required, call the appropriate tool.
+
+For email:
+- Determine the recipient from the conversation.
+- Determine the subject from the conversation.
+- Determine the body from the conversation.
+- Do not ask for user_id.
+- Do not ask for OAuth credentials.
+
+If Gmail authentication is required, the tool/backend will trigger the authentication flow.
+Do not ask the user to provide credentials.
+
+After successful tool execution, summarize the result.
+"""),
         *state["messages"]
     ])
     return {"messages":[response]}
@@ -89,39 +109,49 @@ def handle_tools(state: State):
     last_message: AIMessage = state["messages"][-1]
 
     user_id = state["user_id"]
+    thread_id = state["thread_id"]
 
     results = []
 
     for tool_call in last_message.tool_calls:
 
-        matched_tool = next(
-            (
-                t for t in tools
-                if t.name == tool_call["name"]
-            ),
-            None,
-        )
+        tool_name = tool_call["name"]
+        tool_args = dict(tool_call["args"])
 
-        if matched_tool is None:
+        if tool_name == "send_email_tool":
 
-            result_content = (
-                f"Unknown tool: "
-                f"{tool_call['name']}"
+            result_content = _send_email(
+                user_id=user_id,
+                thread_id=thread_id,
+                to_email=tool_args["to_email"],
+                subject=tool_args["subject"],
+                body=tool_args["body"],
             )
-
         else:
 
-            tool_args = dict(
-                tool_call["args"]
+            matched_tool = next(
+                (
+                    t for t in tools
+                    if t.name == tool_call["name"]
+                ),
+                None,
             )
 
-            # Never allow the LLM to choose
-            # which user owns the credentials.
-            tool_args["user_id"] = user_id
+            if matched_tool is None:
 
-            result_content = matched_tool.invoke(
-                tool_args
-            )
+                result_content = (
+                    f"Unknown tool: "
+                    f"{tool_call['name']}"
+                )
+
+            else:
+
+                tool_args["user_id"] = user_id
+                tool_args["thread_id"] = thread_id
+
+                result_content = matched_tool.invoke(
+                    tool_args
+                )
 
         results.append(
             ToolMessage(

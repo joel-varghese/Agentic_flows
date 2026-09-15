@@ -67,11 +67,12 @@ def _create_message(
 
 
 @tool
-def send_email_tool(
+def _send_email(
     user_id: str,
     to_email: str,
     subject: str,
     body: str,
+    thread_id: str | None = None,
 ) -> str:
     """
     Sends an email using the user's connected Gmail account.
@@ -85,6 +86,7 @@ def send_email_tool(
 
     service = _gmail_service(
         user_id=user_id,
+        thread_id=thread_id,
     )
 
     try:
@@ -122,6 +124,7 @@ def send_email_tool(
             build_auth_required(
                 user_id=user_id,
                 service="Gmail",
+                thread_id=thread_id,
                 revoke=True,
             )
         )
@@ -139,6 +142,7 @@ def send_email_tool(
                 build_auth_required(
                     user_id=user_id,
                     service="Gmail",
+                    thread_id=thread_id,
                     revoke=True,
                 )
             )
@@ -153,3 +157,19 @@ def send_email_tool(
         )
 
         return f"Failed to send email: {e}"
+
+@tool
+def send_email_tool(
+    to_email: str,
+    subject: str,
+    body: str,
+) -> str:
+    """
+    Sends an email using the authenticated user's Gmail account.
+
+    The backend supplies the authenticated user.
+    """
+
+    raise RuntimeError(
+        "send_email_tool must be executed through the backend."
+    )

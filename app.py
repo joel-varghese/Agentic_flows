@@ -55,6 +55,7 @@ def run_agent(message: str, user_id: str, channel: str, thread_id: str | None = 
         {
             "messages": messages,
             "user_id": user_id,
+            "thread_id": thread_key
         },
         config=config,
         stream_mode="values",

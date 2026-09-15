@@ -1,5 +1,5 @@
 """
-Stores Google OAuth connections and OAuth state in Supabase.
+Stores Google OAuth tokens and OAuth state in Supabase.
 """
 
 import os
@@ -14,7 +14,7 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
-GOOGLE_CONNECTIONS_TABLE = "google_connections"
+GOOGLE_TOKENS_TABLE = "google_tokens"
 OAUTH_STATES_TABLE = "oauth_states"
 
 
@@ -33,7 +33,7 @@ def _get_client() -> Client:
 
 
 # ============================================================
-# GOOGLE CONNECTIONS
+# GOOGLE TOKENS
 # ============================================================
 
 def get_token(user_id: str) -> dict | None:
@@ -45,10 +45,9 @@ def get_token(user_id: str) -> dict | None:
 
     result = (
         client
-        .table(GOOGLE_CONNECTIONS_TABLE)
+        .table(GOOGLE_TOKENS_TABLE)
         .select("token_json")
-        .eq("user_id", user_id)
-        .eq("provider", "google")
+        .eq("user_email", user_id)
         .maybe_single()
         .execute()
     )
@@ -73,17 +72,23 @@ def save_token(
     client = _get_client()
 
     data = {
-        "user_id": user_id,
+        "user_email": user_id,
         "provider": "google",
         "token_json": json.dumps(token_dict),
     }
 
     if google_email:
         data["google_email"] = google_email
+    else:
+
+        raise ValueError(
+            "google_email is required when saving "
+            "a Google Oauth token"
+        )
 
     response = (
         client
-        .table(GOOGLE_CONNECTIONS_TABLE)
+        .table(GOOGLE_TOKENS_TABLE)
         .upsert(
             data,
             on_conflict="user_id,provider",
@@ -106,10 +111,9 @@ def delete_token(user_id: str) -> None:
 
     (
         client
-        .table(GOOGLE_CONNECTIONS_TABLE)
+        .table(GOOGLE_TOKENS_TABLE)
         .delete()
-        .eq("user_id", user_id)
-        .eq("provider", "google")
+        .eq("user_email", user_id)
         .execute()
     )
 
